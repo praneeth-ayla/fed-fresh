@@ -1,0 +1,239 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Core Models
+model Category {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products Product[]
+}
+
+model Product {
+  id            Int      @id @default(autoincrement())
+  name          String
+  description   String?
+  basePrice     Decimal
+  imageUrl      String?
+  allergenNotes String?
+  maxFreeAddons Int      @default(0)
+  maxPaidAddons Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  categoryId Int
+  category   Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  addons     ProductAddon[]
+  orderItems OrderItem[]
+}
+
+model Addon {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  price       Decimal   @default(0)
+  type        AddonType // FREE or PAID
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products        ProductAddon[]
+  orderItemAddons OrderItemAddon[]
+}
+
+model ProductAddon {
+  id        Int      @id @default(autoincrement())
+  productId Int
+  addonId   Int
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  addon   Addon   @relation(fields: [addonId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, addonId])
+}
+
+// Orders & Deliveries
+model Order {
+  id                    Int           @id @default(autoincrement())
+  orderNumber           String        @unique // DBX-12345
+  customerEmail         String
+  customerPhone         String?
+  deliveryAddress       Json // { line1, line2, city, postcode, country, instructions }
+  orderType             OrderType // ONE_TIME, WEEKLY_PLAN, CUSTOM_DATES
+  subtotal              Decimal
+  discountAmount        Decimal       @default(0)
+  totalAmount           Decimal
+  paymentStatus         PaymentStatus @default(PENDING)
+  stripePaymentIntentId String?
+  orderStatus           OrderStatus   @default(ACTIVE)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  // Relations
+  discount   Discount?   @relation(fields: [discountId], references: [id])
+  discountId Int?
+  items      OrderItem[]
+  deliveries Delivery[]
+
+  @@index([orderNumber])
+  @@index([customerEmail])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id              Int      @id @default(autoincrement())
+  quantity        Int      @default(1)
+  unitPrice       Decimal
+  totalPrice      Decimal
+  productSnapshot Json // Product details at time of order
+  createdAt       DateTime @default(now())
+
+  orderId   Int
+  productId Int
+  order     Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product          @relation(fields: [productId], references: [id])
+  addons    OrderItemAddon[]
+}
+
+model OrderItemAddon {
+  id            Int      @id @default(autoincrement())
+  addonSnapshot Json // Addon details at time of order
+  createdAt     DateTime @default(now())
+
+  orderItemId Int
+  addonId     Int
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  addon       Addon     @relation(fields: [addonId], references: [id])
+}
+
+// KEY TABLE: Individual Deliveries
+model Delivery {
+  id            Int            @id @default(autoincrement())
+  deliveryDate  DateTime // Date only (time will be 00:00:00)
+  status        DeliveryStatus @default(SCHEDULED)
+  deliveredAt   DateTime?
+  trackingNotes String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  orderId Int
+  order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([deliveryDate])
+  @@index([status])
+  @@index([orderId])
+}
+
+// Date Management & Availability
+model AvailableDeliveryDate {
+  id           Int      @id @default(autoincrement())
+  deliveryDate DateTime @unique // Date only
+  available    Boolean  @default(true)
+  capacity     Int? // Optional: limit orders per day
+  ordersBooked Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([deliveryDate])
+  @@index([available])
+}
+
+model Holiday {
+  id          Int      @id @default(autoincrement())
+  holidayDate DateTime // Date only
+  description String
+  year        Int?
+  createdAt   DateTime @default(now())
+
+  @@unique([holidayDate])
+}
+
+model DeliveryZone {
+  id              Int      @id @default(autoincrement())
+  postcodePattern String // e.g., "SW1*", "W1*"
+  zoneName        String
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Discount {
+  id             Int          @id @default(autoincrement())
+  code           String       @unique
+  type           DiscountType
+  value          Decimal
+  minOrderAmount Decimal      @default(0)
+  usageLimit     Int?
+  usedCount      Int          @default(0)
+  validFrom      DateTime?
+  validUntil     DateTime?
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  orders Order[]
+}
+
+model AdminUser {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("admin")
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Enums
+enum OrderType {
+  ONE_TIME
+  WEEKLY_PLAN
+  CUSTOM_DATES
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum OrderStatus {
+  ACTIVE
+  PARTIALLY_COMPLETE
+  COMPLETED
+  CANCELLED
+}
+
+enum DeliveryStatus {
+  SCHEDULED
+  PREPARING
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+enum AddonType {
+  FREE
+  PAID
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
