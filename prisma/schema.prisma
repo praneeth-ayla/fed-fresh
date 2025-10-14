@@ -8,13 +8,7 @@ datasource db {
 }
 
 /**
- * --------------------------------------------------------------------------
- */
-/**
- * 🔐 NEXTAUTH CORE MODELS
- */
-/**
- * --------------------------------------------------------------------------
+ * NEXTAUTH CORE MODELS
  */
 
 model Account {
@@ -60,25 +54,8 @@ model User {
   sessions      Session[]
 }
 
-model VerificationRequest {
-  id         String   @id @default(cuid())
-  identifier String
-  token      String   @unique
-  expires    DateTime
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-
-  @@unique([identifier, token])
-}
-
 /**
- * --------------------------------------------------------------------------
- */
-/**
- * 🛍️  APP CORE MODELS
- */
-/**
- * --------------------------------------------------------------------------
+ * ️ APP CORE MODELS
  */
 
 model Category {
@@ -94,18 +71,22 @@ model Category {
   products Product[]
 }
 
+/**
+ * 💷 Important: using Int (pence) for prices to avoid Decimal issues
+ * e.g., £12.99 → stored as 1299
+ */
 model Product {
-  id            Int      @id @default(autoincrement())
-  name          String
-  description   String?
-  basePrice     Decimal
-  images        Image[]
-  allergenNotes String?
-  maxFreeAddons Int      @default(0)
-  maxPaidAddons Int      @default(0)
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             Int      @id @default(autoincrement())
+  name           String
+  description    String?
+  basePricePence Int      @default(0) // stored in pennies
+  images         Image[]
+  allergenNotes  String?
+  maxFreeAddons  Int      @default(0)
+  maxPaidAddons  Int      @default(0)
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   categoryId Int
   category   Category       @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -114,19 +95,18 @@ model Product {
 }
 
 model Image {
-  id       Int    @id @default(autoincrement())
-  url      String
-  metadata String
-
-  Product   Product @relation(fields: [productId], references: [id])
+  id        Int     @id @default(autoincrement())
+  url       String
+  metadata  String?
   productId Int
+  Product   Product @relation(fields: [productId], references: [id])
 }
 
 model Addon {
   id          Int       @id @default(autoincrement())
   name        String
   description String?
-  price       Decimal   @default(0)
+  pricePence  Int       @default(0) // stored in pennies
   type        AddonType
   isActive    Boolean   @default(true)
   createdAt   DateTime  @default(now())
@@ -149,13 +129,7 @@ model ProductAddon {
 }
 
 /**
- * --------------------------------------------------------------------------
- */
-/**
- * 🧾 ORDERS & DELIVERIES
- */
-/**
- * --------------------------------------------------------------------------
+ * ORDERS & PAYMENTS
  */
 
 model Order {
@@ -165,9 +139,9 @@ model Order {
   customerPhone         String?
   deliveryAddress       Json
   orderType             OrderType
-  subtotal              Decimal
-  discountAmount        Decimal       @default(0)
-  totalAmount           Decimal
+  subtotalPence         Int
+  discountAmountPence   Int           @default(0)
+  totalAmountPence      Int
   paymentStatus         PaymentStatus @default(PENDING)
   stripePaymentIntentId String?
   orderStatus           OrderStatus   @default(ACTIVE)
@@ -187,8 +161,8 @@ model Order {
 model OrderItem {
   id              Int      @id @default(autoincrement())
   quantity        Int      @default(1)
-  unitPrice       Decimal
-  totalPrice      Decimal
+  unitPricePence  Int
+  totalPricePence Int
   productSnapshot Json
   createdAt       DateTime @default(now())
 
@@ -228,13 +202,7 @@ model Delivery {
 }
 
 /**
- * --------------------------------------------------------------------------
- */
-/**
- * 📅 DATE & AVAILABILITY MANAGEMENT
- */
-/**
- * --------------------------------------------------------------------------
+ * DELIVERY & HOLIDAYS
  */
 
 model AvailableDeliveryDate {
@@ -270,30 +238,24 @@ model DeliveryZone {
 }
 
 model Discount {
-  id             Int          @id @default(autoincrement())
-  code           String       @unique
-  type           DiscountType
-  value          Decimal
-  minOrderAmount Decimal      @default(0)
-  usageLimit     Int?
-  usedCount      Int          @default(0)
-  validFrom      DateTime?
-  validUntil     DateTime?
-  isActive       Boolean      @default(true)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  id                  Int          @id @default(autoincrement())
+  code                String       @unique
+  type                DiscountType
+  valuePence          Int // stored in pennies (e.g., £5 → 500)
+  minOrderAmountPence Int          @default(0)
+  usageLimit          Int?
+  usedCount           Int          @default(0)
+  validFrom           DateTime?
+  validUntil          DateTime?
+  isActive            Boolean      @default(true)
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
 
   orders Order[]
 }
 
 /**
- * --------------------------------------------------------------------------
- */
-/**
  * ENUMS
- */
-/**
- * --------------------------------------------------------------------------
  */
 
 enum OrderType {

@@ -29,7 +29,7 @@ async function main() {
       data: {
         name: "Extra Berries",
         description: "Additional mixed berries",
-        price: 2.5,
+        pricePence: 2.5,
         type: "PAID",
       },
     }),
@@ -37,7 +37,7 @@ async function main() {
       data: {
         name: "Nuts Package",
         description: "Mixed nuts addition",
-        price: 3.0,
+        pricePence: 3.0,
         type: "PAID",
       },
     }),
@@ -45,7 +45,7 @@ async function main() {
       data: {
         name: "Herbal Tea",
         description: "Complimentary herbal tea",
-        price: 0,
+        pricePence: 0,
         type: "FREE",
       },
     }),
@@ -58,7 +58,7 @@ async function main() {
         name: "Summer Fruit Box",
         description:
           "Seasonal summer fruits including berries, melons, and stone fruits",
-        basePrice: 24.99,
+        basePricePence: 2499,
         categoryId: categories[0].id,
         maxFreeAddons: 1,
         maxPaidAddons: 2,
@@ -71,7 +71,7 @@ async function main() {
       data: {
         name: "Keto Diet Box",
         description: "Low-carb, high-fat meal options perfect for keto diet",
-        basePrice: 34.99,
+        basePricePence: 3499,
         categoryId: categories[1].id,
         maxFreeAddons: 2,
         maxPaidAddons: 1,

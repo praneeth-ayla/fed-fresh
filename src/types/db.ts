@@ -99,11 +99,11 @@ export type AddonWithProducts = Prisma.AddonGetPayload<{
  */
 
 /**
- * A lightweight product type for listings (id, name, price, image).
+ * A lightweight product type for listings (id, name, pricePence, image).
  */
 export type ProductListItem = Pick<
   Prisma.ProductGetPayload<{ include: { images: true } }>,
-  "id" | "name" | "basePrice" | "images"
+  "id" | "name" | "basePricePence" | "images"
 >;
 
 /**
