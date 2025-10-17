@@ -110,6 +110,7 @@ export default function AddEditCategoryDialog({
             <Input
               id="sortOrder"
               name="sortOrder"
+              min={1}
               value={sortOrder}
               type="number"
               onChange={(e) => setSortOrder(e.target.value)}

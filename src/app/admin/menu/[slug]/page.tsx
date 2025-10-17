@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import CategoriesSidebar from "@/components/CategoriesSidebar";
 import { notFound } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
+import AddEditProductDialog from "@/components/AddEditProductDialog";
 
 async function getCategories() {
   return prisma.category.findMany({
@@ -18,11 +19,7 @@ async function getProductsByCategory(slug: string) {
         include: {
           images: true,
           category: true,
-          addons: {
-            include: {
-              addon: true,
-            },
-          },
+          addons: true,
         },
         orderBy: { createdAt: "desc" },
       },
@@ -52,12 +49,9 @@ export default async function CategoryPage({
         <div className="container mx-auto px-4 py-8">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold">{category.name} Category</h1>
-            <a
-              href={`/admin/products/new?category=${category.id}`}
-              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
-            >
+            <AddEditProductDialog categoryId={category.id}>
               Add New Product
-            </a>
+            </AddEditProductDialog>
           </div>
           {category.products && (
             <>

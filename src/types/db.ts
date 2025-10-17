@@ -1,12 +1,6 @@
 import { Prisma } from "@prisma/client";
 
 /**
- * --------------------------------------------------------------------------
- * 🛍️ PRODUCT-RELATED TYPES
- * --------------------------------------------------------------------------
- */
-
-/**
  * Product with images included.
  */
 export type ProductWithImages = Prisma.ProductGetPayload<{
@@ -17,7 +11,7 @@ export type ProductWithImages = Prisma.ProductGetPayload<{
  * Product with images and addons included.
  */
 export type ProductWithImagesAndAddons = Prisma.ProductGetPayload<{
-  include: { images: true; addons: { include: { addon: true } } };
+  include: { images: true; addons: true };
 }>;
 
 /**
@@ -39,17 +33,11 @@ export type CategoryWithProductsAndAddons = Prisma.CategoryGetPayload<{
     products: {
       include: {
         images: true;
-        addons: { include: { addon: true } };
+        addons: true;
       };
     };
   };
 }>;
-
-/**
- * --------------------------------------------------------------------------
- * 🧾 ORDER-RELATED TYPES
- * --------------------------------------------------------------------------
- */
 
 /**
  * Order including items and deliveries.
@@ -57,6 +45,7 @@ export type CategoryWithProductsAndAddons = Prisma.CategoryGetPayload<{
 export type OrderWithItems = Prisma.OrderGetPayload<{
   include: {
     items: true;
+    deliveries: true;
   };
 }>;
 
@@ -68,7 +57,7 @@ export type OrderWithItemsAndAddons = Prisma.OrderGetPayload<{
     items: {
       include: {
         product: {
-          include: { images: true };
+          include: { images: true; addons: true };
         };
         addons: {
           include: { addon: true };
@@ -80,26 +69,14 @@ export type OrderWithItemsAndAddons = Prisma.OrderGetPayload<{
 }>;
 
 /**
- * --------------------------------------------------------------------------
- * 🎁 ADDON TYPES
- * --------------------------------------------------------------------------
- */
-
-/**
  * Addon with all products that use it.
  */
 export type AddonWithProducts = Prisma.AddonGetPayload<{
-  include: { products: { include: { product: true } } };
+  include: { Product: true };
 }>;
 
 /**
- * --------------------------------------------------------------------------
- * 📦 UTILITY TYPES
- * --------------------------------------------------------------------------
- */
-
-/**
- * A lightweight product type for listings (id, name, pricePence, image).
+ * A lightweight product type for listings (id, name, basePricePence, images).
  */
 export type ProductListItem = Pick<
   Prisma.ProductGetPayload<{ include: { images: true } }>,
@@ -110,12 +87,3 @@ export type ProductListItem = Pick<
  * A reusable product detail type (used for admin and menu).
  */
 export type ProductDetail = ProductWithImagesAndAddons;
-
-/**
- * --------------------------------------------------------------------------
- * 🧠 NOTES:
- * - Keep naming descriptive but not overly verbose.
- * - You can combine includes to match query patterns in your app.
- * - Prefer PascalCase (`ProductWithImages`) for types.
- * --------------------------------------------------------------------------
- */

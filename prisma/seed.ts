@@ -21,6 +21,14 @@ async function main() {
         slug: "diet-boxes",
       },
     }),
+    prisma.category.create({
+      data: {
+        name: "Juices",
+        description: "Freshly squeezed juices",
+        sortOrder: 3,
+        slug: "juices",
+      },
+    }),
   ]);
 
   // Create addons
@@ -29,7 +37,7 @@ async function main() {
       data: {
         name: "Extra Berries",
         description: "Additional mixed berries",
-        pricePence: 2.5,
+        pricePence: 250, // 2.50 pounds
         type: "PAID",
       },
     }),
@@ -37,7 +45,7 @@ async function main() {
       data: {
         name: "Nuts Package",
         description: "Mixed nuts addition",
-        pricePence: 3.0,
+        pricePence: 300, // 3.00 pounds
         type: "PAID",
       },
     }),
@@ -47,6 +55,14 @@ async function main() {
         description: "Complimentary herbal tea",
         pricePence: 0,
         type: "FREE",
+      },
+    }),
+    prisma.addon.create({
+      data: {
+        name: "Protein Shot",
+        description: "Extra protein booster for drinks",
+        pricePence: 150,
+        type: "PAID",
       },
     }),
   ]);
@@ -63,7 +79,7 @@ async function main() {
         maxFreeAddons: 1,
         maxPaidAddons: 2,
         addons: {
-          create: [{ addonId: addons[0].id }, { addonId: addons[2].id }],
+          connect: [{ id: addons[0].id }, { id: addons[2].id }],
         },
       },
     }),
@@ -76,7 +92,46 @@ async function main() {
         maxFreeAddons: 2,
         maxPaidAddons: 1,
         addons: {
-          create: [{ addonId: addons[1].id }, { addonId: addons[2].id }],
+          connect: [{ id: addons[1].id }, { id: addons[2].id }],
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: "Green Detox Juice",
+        description: "Spinach, kale, apple, and lemon",
+        basePricePence: 1299,
+        categoryId: categories[2].id,
+        maxFreeAddons: 1,
+        maxPaidAddons: 1,
+        addons: {
+          connect: [{ id: addons[3].id }], // Protein Shot
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: "Citrus Blast Juice",
+        description: "Orange, grapefruit, and a hint of ginger",
+        basePricePence: 1399,
+        categoryId: categories[2].id,
+        maxFreeAddons: 1,
+        maxPaidAddons: 1,
+        addons: {
+          connect: [{ id: addons[2].id }], // Herbal Tea
+        },
+      },
+    }),
+    prisma.product.create({
+      data: {
+        name: "Tropical Fruit Box",
+        description: "Mango, pineapple, papaya, and passion fruit",
+        basePricePence: 2799,
+        categoryId: categories[0].id,
+        maxFreeAddons: 1,
+        maxPaidAddons: 2,
+        addons: {
+          connect: [{ id: addons[0].id }, { id: addons[1].id }],
         },
       },
     }),

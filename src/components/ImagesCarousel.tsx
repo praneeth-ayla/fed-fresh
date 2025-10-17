@@ -30,6 +30,7 @@ export default function ImagesCarousel({ images }: { images: ImageType[] }) {
         src={images[currentIndex].url}
         alt={images[currentIndex].metadata || `Image ${currentIndex + 1}`}
         fill
+        unoptimized
         className="object-cover transition-transform duration-500"
         sizes="(max-width: 768px) 100vw, 33vw"
         priority={currentIndex === 0}
