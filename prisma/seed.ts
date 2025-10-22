@@ -72,6 +72,7 @@ async function main() {
     prisma.product.create({
       data: {
         name: "Summer Fruit Box",
+        slug: "summer-fruit-box",
         description:
           "Seasonal summer fruits including berries, melons, and stone fruits",
         basePricePence: 2499,
@@ -86,6 +87,7 @@ async function main() {
     prisma.product.create({
       data: {
         name: "Keto Diet Box",
+        slug: "keto-diet-box",
         description: "Low-carb, high-fat meal options perfect for keto diet",
         basePricePence: 3499,
         categoryId: categories[1].id,
@@ -99,6 +101,7 @@ async function main() {
     prisma.product.create({
       data: {
         name: "Green Detox Juice",
+        slug: "Green-Detox-Juice",
         description: "Spinach, kale, apple, and lemon",
         basePricePence: 1299,
         categoryId: categories[2].id,
@@ -112,6 +115,7 @@ async function main() {
     prisma.product.create({
       data: {
         name: "Citrus Blast Juice",
+        slug: "Citrus-Blast-Juice",
         description: "Orange, grapefruit, and a hint of ginger",
         basePricePence: 1399,
         categoryId: categories[2].id,
@@ -125,6 +129,7 @@ async function main() {
     prisma.product.create({
       data: {
         name: "Tropical Fruit Box",
+        slug: "Tropical-Fruit-Box",
         description: "Mango, pineapple, papaya, and passion fruit",
         basePricePence: 2799,
         categoryId: categories[0].id,

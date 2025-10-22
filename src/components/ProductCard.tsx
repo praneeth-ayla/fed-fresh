@@ -5,7 +5,7 @@ import {
   deleteProduct,
   duplicateProduct,
   toggleProductActive,
-} from "@/app/actions/product";
+} from "@/actions/product";
 import AddEditProductDialog from "./AddEditProductDialog";
 
 export default function ProductCard({

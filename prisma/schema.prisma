@@ -78,6 +78,7 @@ model Category {
 model Product {
   id                  Int         @id @default(autoincrement())
   name                String
+  slug                String
   description         String?
   basePricePence      Int         @default(0) // stored in pennies
   images              Image[]

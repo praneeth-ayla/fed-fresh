@@ -6,9 +6,9 @@ export default function NavbarAdmin() {
       <div>Logo</div>
       <div className="flex gap-8">
         <div className="flex gap-4">
-          <Link href="/admin/menu">Menu management</Link>
-          <Link href="/admin/orders">Order management</Link>
-          <Link href="/admin/pricing">Pricing</Link>
+          <Link href="/dashboard/menu">Menu management</Link>
+          <Link href="/dashboard/orders">Order management</Link>
+          <Link href="/dashboard/pricing">Pricing</Link>
         </div>
         <div>ON/OFF</div>
       </div>

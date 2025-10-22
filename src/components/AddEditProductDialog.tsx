@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { addProduct, updateProduct } from "@/app/actions/product";
+import { addProduct, updateProduct } from "@/actions/product";
 import { useRouter } from "next/navigation";
 import {
   Dialog,

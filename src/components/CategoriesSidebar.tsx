@@ -33,7 +33,7 @@ export default function CategoriesSidebar({
             <Link
               href={
                 isAdmin
-                  ? `/admin/menu/${encodeURIComponent(cat.slug)}`
+                  ? `/dashboard/menu/${encodeURIComponent(cat.slug)}`
                   : `/menu/${encodeURIComponent(cat.slug)}`
               }
               className="flex-1 truncate"

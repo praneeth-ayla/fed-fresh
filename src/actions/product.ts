@@ -3,14 +3,28 @@
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
+/**
+ * @file actions/product.ts
+ * @description Server-side actions for managing products in the admin dashboard.
+ * Includes functions to create, update, delete, duplicate, and toggle product activity.
+ * Uses Prisma ORM and Next.js cache revalidation.
+ */
+
+/**
+ * Type representing a product addon coming from the frontend.
+ */
 type AddonInput = {
   name: string;
   description?: string | null;
   pricePence?: number | null;
-  type?: string | null;
+  type?: "PAID" | "FREE" | null;
 };
 
-// 🔹 HELPER: Parse Addons JSON from FormData
+/**
+ * 🔹 HELPER: Parse Addons JSON from FormData
+ * Safely parses JSON string of addons and returns array of AddonInput
+ * Placeholder: default type determination is basic and may need refinement
+ */
 function parseAddons(formData: FormData): AddonInput[] {
   const raw = formData.get("addons") as string | null;
   if (!raw) return [];
@@ -23,14 +37,17 @@ function parseAddons(formData: FormData): AddonInput[] {
       name: String(a.name || "").trim(),
       description: a.description ? String(a.description) : null,
       pricePence: typeof a.pricePence === "number" ? a.pricePence : 0,
-      type: a.pricePence && a.pricePence > 0 ? "PAID" : "FREE",
+      type: a.pricePence && a.pricePence > 0 ? "PAID" : "FREE", // Placeholder logic
     }));
   } catch {
     return [];
   }
 }
 
-// 🔹 HELPER: Parse Images JSON from FormData
+/**
+ * 🔹 HELPER: Parse Images JSON from FormData
+ * Safely parses JSON string of image URLs and returns array of objects for DB insertion
+ */
 function parseImages(formData: FormData): { url: string }[] {
   const raw = formData.get("images") as string | null;
   if (!raw) return [];
@@ -41,13 +58,17 @@ function parseImages(formData: FormData): { url: string }[] {
 
     return urls.map((url: string) => ({
       url,
+      // metadata placeholder for future extension
     }));
   } catch {
     return [];
   }
 }
 
-// 🔹 CREATE PRODUCT
+/**
+ * 🔹 CREATE PRODUCT
+ * Inserts a new product along with optional addons and images
+ */
 export async function addProduct(formData: FormData) {
   const name = (formData.get("name") as string | null)?.trim();
   const description = (formData.get("description") as string) || null;
@@ -61,6 +82,8 @@ export async function addProduct(formData: FormData) {
   const availabilityWeekly = formData.get("availabilityWeekly") === "true";
 
   if (!name || !categoryId) throw new Error("Missing required fields");
+
+  const slug = name.toLowerCase().replace(/\s+/g, "-");
 
   const addons = parseAddons(formData);
   const images = parseImages(formData);
@@ -79,6 +102,7 @@ export async function addProduct(formData: FormData) {
         availabilityOneTime,
         availabilityWeekly,
         isActive: true,
+        slug,
       },
     });
 
@@ -88,7 +112,7 @@ export async function addProduct(formData: FormData) {
           name: a.name,
           description: a.description ?? null,
           pricePence: a.pricePence ?? 0,
-          type: a.pricePence && a.pricePence > 0 ? "PAID" : "FREE",
+          type: a.type ?? "FREE",
           productId: created.id,
         })),
       });
@@ -104,10 +128,13 @@ export async function addProduct(formData: FormData) {
     }
   });
 
-  revalidatePath("/admin/menu");
+  revalidatePath("/dashboard/menu");
 }
 
-// 🔹 UPDATE PRODUCT
+/**
+ * 🔹 UPDATE PRODUCT
+ * Updates an existing product and replaces its addons and images
+ */
 export async function updateProduct(formData: FormData) {
   const id = Number(formData.get("id"));
   const name = (formData.get("name") as string | null)?.trim();
@@ -122,6 +149,8 @@ export async function updateProduct(formData: FormData) {
   const availabilityWeekly = formData.get("availabilityWeekly") === "true";
 
   if (!id || !name) throw new Error("Invalid product data");
+
+  const slug = name.toLowerCase().replace(/\s+/g, "-");
 
   const addons = parseAddons(formData);
   const images = parseImages(formData);
@@ -140,26 +169,26 @@ export async function updateProduct(formData: FormData) {
         maxPaidAddons,
         availabilityOneTime,
         availabilityWeekly,
+        slug,
       },
     });
 
+    // Replace existing addons
     await tx.addon.deleteMany({ where: { productId: id } });
-
     if (addons.length > 0) {
       await tx.addon.createMany({
         data: addons.map((a) => ({
           name: a.name,
           description: a.description ?? null,
           pricePence: a.pricePence ?? 0,
-          type: a.pricePence && a.pricePence > 0 ? "PAID" : "FREE",
+          type: a.type ?? "FREE",
           productId: id,
         })),
       });
     }
 
-    // Replace all existing images
+    // Replace existing images
     await tx.image.deleteMany({ where: { productId: id } });
-
     if (images.length > 0) {
       await tx.image.createMany({
         data: images.map((img) => ({
@@ -172,11 +201,14 @@ export async function updateProduct(formData: FormData) {
     return prod;
   });
 
-  revalidatePath("/admin/menu");
+  revalidatePath("/dashboard/menu");
   return updated;
 }
 
-// 🔹 DELETE PRODUCT
+/**
+ * 🔹 DELETE PRODUCT
+ * Deletes a product and its associated addons and images
+ */
 export async function deleteProduct(id: number) {
   if (!id) throw new Error("Invalid product ID");
 
@@ -186,10 +218,12 @@ export async function deleteProduct(id: number) {
     prisma.product.delete({ where: { id } }),
   ]);
 
-  revalidatePath("/admin/menu");
+  revalidatePath("/dashboard/menu");
 }
 
-// 🔹 TOGGLE ACTIVE
+/**
+ * 🔹 TOGGLE PRODUCT ACTIVE STATUS
+ */
 export async function toggleProductActive(id: number, active: boolean) {
   if (!id) throw new Error("Invalid product ID");
 
@@ -198,18 +232,19 @@ export async function toggleProductActive(id: number, active: boolean) {
     data: { isActive: active },
   });
 
-  revalidatePath("/admin/menu");
+  revalidatePath("/dashboard/menu");
   return updated;
 }
 
-// 🔹 DUPLICATE PRODUCT
+/**
+ * 🔹 DUPLICATE PRODUCT
+ * Creates a copy of an existing product including its images and addons
+ * Copied product is set inactive by default
+ */
 export async function duplicateProduct(id: number) {
   const product = await prisma.product.findUnique({
     where: { id },
-    include: {
-      images: true,
-      addons: true,
-    },
+    include: { images: true, addons: true },
   });
 
   if (!product) throw new Error("Product not found");
@@ -226,6 +261,7 @@ export async function duplicateProduct(id: number) {
         maxFreeAddons: product.maxFreeAddons,
         maxPaidAddons: product.maxPaidAddons,
         isActive: false,
+        slug: product.slug,
       },
     });
 
@@ -233,7 +269,6 @@ export async function duplicateProduct(id: number) {
       await tx.image.createMany({
         data: product.images.map((img) => ({
           url: img.url,
-          metadata: img.metadata,
           productId: created.id,
         })),
       });
@@ -245,7 +280,7 @@ export async function duplicateProduct(id: number) {
           name: a.name,
           description: a.description,
           pricePence: a.pricePence,
-          type: a.type as any,
+          type: a.type ?? "FREE",
           productId: created.id,
         })),
       });
@@ -254,6 +289,6 @@ export async function duplicateProduct(id: number) {
     return created;
   });
 
-  revalidatePath("/admin/menu");
+  revalidatePath("/dashboard/menu");
   return newProduct;
 }

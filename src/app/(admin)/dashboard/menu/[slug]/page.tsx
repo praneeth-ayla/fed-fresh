@@ -30,7 +30,7 @@ async function getProductsByCategory(slug: string) {
   return category;
 }
 
-export default async function CategoryPage({
+export default async function page({
   params,
 }: {
   params: Promise<{ slug: string }>;

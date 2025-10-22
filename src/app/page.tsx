@@ -1,5 +1,6 @@
 "use client";
 import { signIn, signOut, useSession } from "next-auth/react";
+import Link from "next/link";
 
 export default function Home() {
   const { data: session, status } = useSession();
@@ -26,7 +27,7 @@ export default function Home() {
 
         {session?.user?.isAdmin && (
           <div className="mx-auto flex flex-col">
-            <a href="/admin">products admin page</a>
+            <Link href="/dashboard">products admin page</Link>
             <button onClick={() => signOut()}>Logout</button>
           </div>
         )}

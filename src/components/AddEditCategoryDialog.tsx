@@ -5,7 +5,7 @@ import {
   addCategory,
   updateCategory,
   deleteCategory,
-} from "@/app/actions/category";
+} from "@/actions/category";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -49,7 +49,7 @@ export default function AddEditCategoryDialog({
         router.refresh();
       } else {
         const updated = await updateCategory(formData);
-        router.push(`/admin/menu/${updated.slug}`);
+        router.push(`/dashboard/menu/${updated.slug}`);
       }
 
       setIsOpen(false);
@@ -60,7 +60,7 @@ export default function AddEditCategoryDialog({
     if (existing && confirm(`Delete "${existing.name}"?`)) {
       startTransition(async () => {
         await deleteCategory(existing.id);
-        router.push(`/admin/menu`); // go back to menu
+        router.push(`/dashboard/menu`); // go back to menu
         setIsOpen(false);
       });
     }
