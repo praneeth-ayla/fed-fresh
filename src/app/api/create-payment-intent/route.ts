@@ -2,20 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
 import { OrderType } from "@prisma/client";
+import { Address } from "@/types/types";
+import {
+  validateAddons,
+  validateDeliveryDates,
+  validatePostcode,
+} from "@/lib/utils";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 // ------------------- Types -------------------
-interface Address {
-  line1: string;
-  city: string;
-  postal_code: string;
-  country: string;
-  lat?: number;
-  lng?: number;
-  fullAddress?: string;
-}
-
 interface CartAddonInput {
   id: number;
   name?: string;
@@ -57,83 +53,6 @@ interface OrderItemPayload {
 
 // ------------------- Helper Functions -------------------
 
-// Validate all delivery dates
-async function validateDeliveryDates(dates: string[]) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const errors: string[] = [];
-
-  for (const dateStr of dates) {
-    const date = new Date(dateStr);
-    date.setHours(0, 0, 0, 0);
-
-    if (isNaN(date.getTime())) {
-      errors.push(`${dateStr} is not a valid date`);
-      continue;
-    }
-
-    if (date < today) {
-      errors.push(`${dateStr} is in the past`);
-      continue;
-    }
-
-    const isHoliday = await prisma.holiday.findUnique({
-      where: { holidayDate: date },
-    });
-    if (isHoliday) {
-      errors.push(`${dateStr} is a holiday: ${isHoliday.description}`);
-      continue;
-    }
-
-    const availability = await prisma.availableDeliveryDate.findUnique({
-      where: { deliveryDate: date },
-    });
-    if (availability) {
-      if (!availability.available) {
-        errors.push(`${dateStr} is not available for delivery`);
-      } else if (
-        availability.capacity &&
-        availability.ordersBooked >= availability.capacity
-      ) {
-        errors.push(`${dateStr} is fully booked`);
-      }
-    }
-  }
-
-  if (errors.length) {
-    throw new Error(`Delivery date validation failed: ${errors.join("; ")}`);
-  }
-}
-
-// Validate addons against limits
-function validateAddons(
-  product: {
-    name: string;
-    maxFreeAddons: number;
-    maxPaidAddons: number;
-  },
-  selectedAddons: Array<{ type: "FREE" | "PAID" }>
-): { valid: boolean; error?: string } {
-  const freeCount = selectedAddons.filter((a) => a.type === "FREE").length;
-  const paidCount = selectedAddons.filter((a) => a.type === "PAID").length;
-
-  if (freeCount > product.maxFreeAddons) {
-    return {
-      valid: false,
-      error: `"${product.name}" allows max ${product.maxFreeAddons} free addon(s), but ${freeCount} selected`,
-    };
-  }
-
-  if (paidCount > product.maxPaidAddons) {
-    return {
-      valid: false,
-      error: `"${product.name}" allows max ${product.maxPaidAddons} paid addon(s), but ${paidCount} selected`,
-    };
-  }
-
-  return { valid: true };
-}
-
 // ------------------- Main Handler -------------------
 export async function POST(req: NextRequest) {
   try {
@@ -145,14 +64,24 @@ export async function POST(req: NextRequest) {
       deliveryAddress: Address;
     };
 
+    // ✅ Basic field validation
     if (
       !customerEmail ||
-      !deliveryAddress?.line1 ||
+      !deliveryAddress?.address_line_1 ||
       !deliveryAddress?.city ||
       !deliveryAddress?.postal_code
     ) {
+      console.log({ customerEmail, deliveryAddress, body });
       return NextResponse.json(
         { error: "Missing required fields (email or address)" },
+        { status: 400 }
+      );
+    }
+
+    // ✅ Validate allowed postcode
+    if (!validatePostcode(deliveryAddress.postal_code)) {
+      return NextResponse.json(
+        { error: `We only deliver in Leicester (LE1–LE5)` },
         { status: 400 }
       );
     }
@@ -161,7 +90,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
     }
 
-    // Validate dates
+    // ✅ Validate delivery dates
     const allDates = items.flatMap((i) => i.deliveryDates);
     try {
       await validateDeliveryDates(allDates);
@@ -171,7 +100,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    // Fetch products and addons
+    // ✅ Fetch product & addon details
     const productIds = items.map((i) => i.id);
     const addonIds = items
       .flatMap((i) => i.addons?.map((a) => a.id) ?? [])
@@ -194,6 +123,7 @@ export async function POST(req: NextRequest) {
       }),
     ]);
 
+    // ✅ Calculate total
     let totalPence = 0;
     const orderItemsPayload: OrderItemPayload[] = [];
 
@@ -269,14 +199,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid total" }, { status: 400 });
     }
 
-    // Create order
+    // ✅ Create order with structured address
     const orderNumber = `ORD-${Date.now().toString(36)}`;
     const order = await prisma.order.create({
       data: {
         orderNumber,
         customerEmail,
         customerPhone: customerPhone || null,
-        deliveryAddress: JSON.parse(JSON.stringify(deliveryAddress)),
+        deliveryAddress: {
+          address_line_1: deliveryAddress.address_line_1,
+          address_line_2: deliveryAddress.address_line_2 || "",
+          city: deliveryAddress.city,
+          state: deliveryAddress.state || "",
+          postal_code: deliveryAddress.postal_code,
+          country: deliveryAddress.country,
+          lat: deliveryAddress.lat || null,
+          lng: deliveryAddress.lng || null,
+          fullAddress: deliveryAddress.fullAddress || "",
+        },
         subtotalPence: totalPence,
         totalAmountPence: totalPence,
         paymentStatus: "PENDING",
@@ -284,6 +224,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // ✅ Create order items
     const createdItems = await Promise.all(
       orderItemsPayload.map(async (p) => {
         const item = await prisma.orderItem.create({
@@ -319,7 +260,7 @@ export async function POST(req: NextRequest) {
       })
     );
 
-    // Stripe checkout session
+    // ✅ Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [

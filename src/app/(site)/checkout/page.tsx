@@ -1,38 +1,10 @@
 "use client";
 
-import { useCart, CartItem } from "@/context/CartContext";
+import DeliveryAddressSection from "@/components/DeliveryAddressSection";
+import OrderSummary from "@/components/OrderSummary";
+import { useCart } from "@/context/CartContext";
+import { Address, CustomerInfoProps, OrderSummaryProps } from "@/types/types";
 import { useState } from "react";
-import AddressInput from "@/components/AddressInput";
-
-// ------------------- Types -------------------
-export interface Address {
-  line1: string;
-  city: string;
-  postal_code: string;
-  country: string;
-  lat?: number;
-  lng?: number;
-  fullAddress?: string;
-}
-
-interface CustomerInfoProps {
-  email: string;
-  phone: string;
-  setEmail: (v: string) => void;
-  setPhone: (v: string) => void;
-}
-
-interface DeliveryAddressSectionProps {
-  address: Address;
-  setAddress: (v: Address) => void;
-  postcodeError: string;
-}
-
-interface OrderSummaryProps {
-  items: CartItem[];
-  totalPrice: number;
-  totalDeliveries: number;
-}
 
 // ------------------- Helpers -------------------
 const validatePostcode = (postcode: string): boolean => {
@@ -71,134 +43,32 @@ function CustomerInfo({ email, phone, setEmail, setPhone }: CustomerInfoProps) {
   );
 }
 
-// ------------------- Address Section -------------------
-function DeliveryAddressSection({
-  address,
-  setAddress,
-  postcodeError,
-}: DeliveryAddressSectionProps) {
-  return (
-    <div className="mb-6">
-      <h3 className="font-medium mb-3 text-lg">Delivery Address *</h3>
-      <AddressInput
-        value={address}
-        onChange={(addr: Address) => setAddress(addr)}
-        error={postcodeError}
-      />
-      {postcodeError && (
-        <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-red-600 text-sm">{postcodeError}</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ------------------- Order Summary -------------------
-function OrderSummary({
-  items,
-  totalPrice,
-  totalDeliveries,
-}: OrderSummaryProps) {
-  return (
-    <div className="mb-6">
-      <h3 className="font-medium mb-4 text-lg">Order Summary</h3>
-      {items.map((item) => {
-        const addonsTotal =
-          item.addons?.reduce((s, a) => s + a.pricePence, 0) ?? 0;
-        const itemTotal =
-          ((item.pricePence + addonsTotal) *
-            item.quantity *
-            item.deliveryDates.length) /
-          100;
-
-        return (
-          <div key={item.uniqueKey} className="border-b pb-4 mb-4">
-            <div className="flex justify-between">
-              <p className="font-medium">{item.name}</p>
-              <p className="font-medium">£{itemTotal.toFixed(2)}</p>
-            </div>
-
-            <p className="text-sm text-gray-600">
-              Type: {item.orderType.replace("_", " ")} • Qty: {item.quantity}{" "}
-              per delivery
-            </p>
-
-            {item.deliveryDates.length > 0 && (
-              <div className="mt-1">
-                <p className="text-xs text-gray-500 font-medium">
-                  {item.deliveryDates.length} Delivery
-                  {item.deliveryDates.length > 1 ? "s" : ""}:
-                </p>
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {item.deliveryDates.slice(0, 3).map((date) => (
-                    <span
-                      key={date}
-                      className="text-xs bg-gray-100 px-2 py-1 rounded"
-                    >
-                      {date}
-                    </span>
-                  ))}
-                  {item.deliveryDates.length > 3 && (
-                    <span className="text-xs text-gray-500">
-                      +{item.deliveryDates.length - 3} more
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {item.addons?.length ? (
-              <ul className="text-sm text-gray-500 ml-4 mt-1">
-                {item.addons.map((a) => (
-                  <li key={a.id}>
-                    + {a.name} (£{(a.pricePence / 100).toFixed(2)} per delivery)
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </div>
-        );
-      })}
-
-      <div className="border-t pt-4">
-        <div className="flex justify-between items-center mb-2">
-          <p className="text-gray-600">Total Deliveries:</p>
-          <p className="text-gray-600">{totalDeliveries}</p>
-        </div>
-        <p className="text-lg font-bold">
-          Total: £{(totalPrice / 100).toFixed(2)}
-        </p>
-      </div>
-    </div>
-  );
-}
-
 // ------------------- Main Component -------------------
+
 export default function CheckoutPage() {
   const { items, totalPrice, totalDeliveries } = useCart();
   const [loading, setLoading] = useState(false);
-  const [customerEmail, setCustomerEmail] = useState<string>("");
-  const [customerPhone, setCustomerPhone] = useState<string>("");
-  const [deliveryAddress, setDeliveryAddress] = useState<Address>({
-    line1: "",
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState<Address>({
+    address_line_1: "",
+    address_line_2: "",
     city: "",
     postal_code: "",
     country: "GB",
   });
-  const [postcodeError, setPostcodeError] = useState<string>("");
-
-  const handlePlaceOrder = async (): Promise<void> => {
-    if (!validatePostcode(deliveryAddress.postal_code)) {
+  const [postcodeError, setPostcodeError] = useState("");
+  const handlePlaceOrder = async () => {
+    if (!validatePostcode(address.postal_code)) {
       setPostcodeError("We only deliver in Leicester (LE1–LE5)");
       return;
     }
 
     if (
-      !customerEmail ||
-      !deliveryAddress.line1 ||
-      !deliveryAddress.city ||
-      !deliveryAddress.postal_code
+      !email ||
+      !address.address_line_1 ||
+      !address.city ||
+      !address.postal_code
     ) {
       alert("Please fill in all required fields");
       return;
@@ -211,59 +81,48 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           items,
-          customerEmail,
-          customerPhone,
-          deliveryAddress,
+          customerEmail: email,
+          customerPhone: phone,
+          deliveryAddress: address,
         }),
       });
 
       if (!res.ok) throw new Error("Failed to create order");
 
-      type CreatePaymentIntentResponse = {
-        stripeSession: { url: string };
-      };
-
-      const data: CreatePaymentIntentResponse = await res.json();
+      const data = await res.json();
       window.location.href = data.stripeSession.url;
     } catch (err) {
-      const errorMessage =
-        err instanceof Error
-          ? err.message
-          : "Failed to place order. Try again.";
-      alert(errorMessage);
+      alert("Failed to place order. Try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  if (items.length === 0) {
+  if (items.length === 0)
     return (
       <p className="text-center py-6 text-gray-600">Your cart is empty.</p>
     );
-  }
-
-  const isPostcodeValid = validatePostcode(deliveryAddress.postal_code);
 
   return (
     <div className="max-w-4xl mx-auto py-10 px-4">
       <h2 className="text-2xl font-bold mb-6">Checkout</h2>
 
+      {/* Customer Info */}
       <CustomerInfo
-        email={customerEmail}
-        phone={customerPhone}
-        setEmail={setCustomerEmail}
-        setPhone={setCustomerPhone}
+        email={email}
+        phone={phone}
+        setEmail={setEmail}
+        setPhone={setPhone}
       />
 
+      {/* Address Section */}
       <DeliveryAddressSection
-        address={deliveryAddress}
-        setAddress={(a) => {
-          setDeliveryAddress(a);
-          setPostcodeError("");
-        }}
+        address={address}
+        setAddress={setAddress}
         postcodeError={postcodeError}
       />
 
+      {/* Order Summary */}
       <OrderSummary
         items={items}
         totalPrice={totalPrice}
@@ -272,17 +131,11 @@ export default function CheckoutPage() {
 
       <button
         onClick={handlePlaceOrder}
-        disabled={loading || !isPostcodeValid}
-        className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-3 rounded-md font-medium transition-colors"
+        disabled={loading}
+        className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-md font-medium transition-colors"
       >
         {loading ? "Processing..." : `Pay £${(totalPrice / 100).toFixed(2)}`}
       </button>
-
-      {!isPostcodeValid && deliveryAddress.postal_code && (
-        <p className="text-red-500 text-sm mt-2 text-center">
-          Please enter a valid Leicester postcode (LE1–LE5) to proceed
-        </p>
-      )}
     </div>
   );
 }

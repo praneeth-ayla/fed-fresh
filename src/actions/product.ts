@@ -74,7 +74,6 @@ export async function addProduct(formData: FormData) {
   const description = (formData.get("description") as string) || null;
   const categoryId = Number(formData.get("categoryId"));
   const basePricePence = Number(formData.get("basePricePence")) || 0;
-  const allergenNotes = (formData.get("allergenNotes") as string) || null;
   const tags = (formData.get("tags") as string) || null;
   const maxFreeAddons = Number(formData.get("maxFreeAddons")) || 0;
   const maxPaidAddons = Number(formData.get("maxPaidAddons")) || 0;
@@ -140,7 +139,6 @@ export async function updateProduct(formData: FormData) {
   const description = (formData.get("description") as string) || null;
   const categoryId = Number(formData.get("categoryId"));
   const basePricePence = Number(formData.get("basePricePence")) || 0;
-  const allergenNotes = (formData.get("allergenNotes") as string) || null;
   const tags = (formData.get("tags") as string) || null;
   const maxFreeAddons = Number(formData.get("maxFreeAddons")) || 0;
   const maxPaidAddons = Number(formData.get("maxPaidAddons")) || 0;
