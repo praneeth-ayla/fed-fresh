@@ -80,9 +80,8 @@ model Product {
   name                String
   slug                String
   description         String?
-  basePricePence      Int         @default(0) // stored in pennies
+  basePricePence      Int         @default(0) // stored in pence
   images              Image[]
-  allergenNotes       String?
   tags                String?
   maxFreeAddons       Int         @default(0)
   maxPaidAddons       Int         @default(0)
@@ -109,10 +108,10 @@ model Addon {
   id              Int              @id @default(autoincrement())
   name            String
   description     String?
-  pricePence      Int              @default(0) // stored in pennies
+  pricePence      Int              @default(0) // stored in pence
   type            AddonType
   createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
+  updatedAt       DateTime         @default(now()) @updatedAt
   orderItemAddons OrderItemAddon[]
   Product         Product?         @relation(fields: [productId], references: [id])
   productId       Int?
@@ -128,7 +127,6 @@ model Order {
   customerEmail         String
   customerPhone         String?
   deliveryAddress       Json
-  orderType             OrderType
   subtotalPence         Int
   discountAmountPence   Int           @default(0)
   totalAmountPence      Int
@@ -136,12 +134,12 @@ model Order {
   stripePaymentIntentId String?
   orderStatus           OrderStatus   @default(ACTIVE)
   createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
+  updatedAt             DateTime      @default(now()) @updatedAt
 
-  discount   Discount?   @relation(fields: [discountId], references: [id])
-  discountId Int?
-  items      OrderItem[]
-  deliveries Delivery[]
+  discount        Discount?       @relation(fields: [discountId], references: [id])
+  discountId      Int?
+  items           OrderItem[]
+  orderDeliveries OrderDelivery[]
 
   @@index([orderNumber])
   @@index([customerEmail])
@@ -149,18 +147,19 @@ model Order {
 }
 
 model OrderItem {
-  id              Int      @id @default(autoincrement())
-  quantity        Int      @default(1)
+  id              Int              @id @default(autoincrement())
+  quantity        Int              @default(1)
   unitPricePence  Int
   totalPricePence Int
   productSnapshot Json
-  createdAt       DateTime @default(now())
-
-  orderId   Int
-  productId Int
-  order     Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product   Product          @relation(fields: [productId], references: [id])
-  addons    OrderItemAddon[]
+  createdAt       DateTime         @default(now())
+  itemType        OrderType
+  orderId         Int
+  productId       Int
+  order           Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product         Product          @relation(fields: [productId], references: [id])
+  addons          OrderItemAddon[]
+  deliveries      OrderDelivery[]
 }
 
 model OrderItemAddon {
@@ -174,17 +173,23 @@ model OrderItemAddon {
   addon       Addon     @relation(fields: [addonId], references: [id])
 }
 
-model Delivery {
+/**
+ * OrderDelivery: ties an Order (and optionally an OrderItem) to a delivery date.
+ * This supports single-day, weekly/multi-week, and arbitrary custom-date deliveries.
+ */
+model OrderDelivery {
   id            Int            @id @default(autoincrement())
   deliveryDate  DateTime
   status        DeliveryStatus @default(SCHEDULED)
   deliveredAt   DateTime?
   trackingNotes String?
   createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  updatedAt     DateTime       @default(now()) @updatedAt
 
-  orderId Int
-  order   Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId     Int
+  orderItemId Int?
+  order       Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem   OrderItem? @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
 
   @@index([deliveryDate])
   @@index([status])
@@ -202,7 +207,7 @@ model AvailableDeliveryDate {
   capacity     Int?
   ordersBooked Int      @default(0)
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  updatedAt    DateTime @default(now()) @updatedAt
 
   @@index([deliveryDate])
   @@index([available])
@@ -224,14 +229,14 @@ model DeliveryZone {
   zoneName        String
   isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  updatedAt       DateTime @default(now()) @updatedAt
 }
 
 model Discount {
   id                  Int          @id @default(autoincrement())
   code                String       @unique
   type                DiscountType
-  valuePence          Int // stored in pennies (e.g., £5 → 500)
+  valuePence          Int // stored in pence (e.g., £5 → 500)
   minOrderAmountPence Int          @default(0)
   usageLimit          Int?
   usedCount           Int          @default(0)
@@ -239,7 +244,7 @@ model Discount {
   validUntil          DateTime?
   isActive            Boolean      @default(true)
   createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
+  updatedAt           DateTime     @default(now()) @updatedAt
 
   orders Order[]
 }
@@ -251,7 +256,7 @@ model Discount {
 enum OrderType {
   ONE_TIME
   WEEKLY_PLAN
-  CUSTOM_DATES
+  CUSTOM_DAYS
 }
 
 enum PaymentStatus {

@@ -10,7 +10,7 @@ export default function Home() {
   }
 
   return (
-    <div>
+    <div className="h-screen  w-screen flex justify-center items-center flex-col">
       <h1>Fed Fresh</h1>
 
       <pre>{JSON.stringify(session, null, 2)}</pre>
@@ -32,6 +32,7 @@ export default function Home() {
           </div>
         )}
 
+        <Link href="/menu">Menu</Link>
         {session && !session.user.isAdmin && (
           <p>You are signed in but not an admin.</p>
         )}

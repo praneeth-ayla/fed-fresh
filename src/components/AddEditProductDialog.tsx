@@ -51,9 +51,6 @@ export default function AddEditProductDialog({
   const [availabilityWeekly, setAvailabilityWeekly] = useState(
     existing?.availabilityWeekly ?? false
   );
-  const [allergenNotes, setAllergenNotes] = useState(
-    existing?.allergenNotes || ""
-  );
   const [maxFreeAddons, setMaxFreeAddons] = useState(
     existing?.maxFreeAddons?.toString() || "0"
   );
@@ -268,17 +265,6 @@ export default function AddEditProductDialog({
                 </Label>
               </div>
             </div>
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="allergenNotes">Allergen Notes</Label>
-            <Input
-              id="allergenNotes"
-              name="allergenNotes"
-              value={allergenNotes}
-              onChange={(e) => setAllergenNotes(e.target.value)}
-              placeholder="Optional"
-            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
