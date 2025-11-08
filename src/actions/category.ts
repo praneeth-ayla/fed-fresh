@@ -34,6 +34,7 @@ export async function addCategory(formData: FormData) {
   });
 
   // Revalidate the dashboard menu path to reflect the new category
+  revalidatePath(`/menu/${slug}`);
   revalidatePath("/dashboard/menu");
 }
 
@@ -62,6 +63,8 @@ export async function updateCategory(formData: FormData) {
 
   // Revalidate dashboard path to reflect changes
   revalidatePath("/dashboard/menu");
+  revalidatePath(`/menu`);
+  revalidatePath(`/menu/${slug}`);
 
   return updated;
 }

@@ -16,7 +16,7 @@ export default function Navbar() {
           href="/"
           className={`${
             isSelectedPath(path, "/")
-              ? "font-semibold border-b-4 border-surface"
+              ? "font-semibold border-b-4 border-secondary"
               : ""
           }`}
         >
@@ -27,7 +27,7 @@ export default function Navbar() {
           href="/menu"
           className={`${
             isSelectedPath(path, "/menu")
-              ? "font-semibold border-b-4 border-surface"
+              ? "font-semibold border-b-4 border-secondary"
               : ""
           }`}
         >
@@ -38,7 +38,7 @@ export default function Navbar() {
           href="/orders"
           className={`${
             isSelectedPath(path, "/orders")
-              ? "font-semibold border-b-4 border-surface"
+              ? "font-semibold border-b-4 border-secondary"
               : ""
           }`}
         >
@@ -49,7 +49,7 @@ export default function Navbar() {
           href="/cart"
           className={`${
             isSelectedPath(path, "/cart")
-              ? "font-semibold border-b-4 border-surface"
+              ? "font-semibold border-b-4 border-secondary"
               : ""
           }`}
         >

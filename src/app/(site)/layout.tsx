@@ -13,7 +13,7 @@ export default function AdminGroupLayout({
         strategy="beforeInteractive"
       />
       <Navbar />
-      {children}
+      <div className="px-16">{children}</div>
     </>
   );
 }

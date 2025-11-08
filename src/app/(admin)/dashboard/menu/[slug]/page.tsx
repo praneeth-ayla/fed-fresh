@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import CategoriesSidebar from "@/components/CategoriesSidebar";
 import { notFound } from "next/navigation";
-import ProductCard from "@/components/ProductCard";
+import ProductCardAdmin from "@/components/ProductCardAdmin";
 import AddEditProductDialog from "@/components/AddEditProductDialog";
 
 async function getCategories() {
@@ -60,7 +60,7 @@ export default async function page({
               ) : (
                 <div className="bg-white divide-y divide-gray-200">
                   {category.products.map((product, id) => (
-                    <ProductCard product={product} key={id} />
+                    <ProductCardAdmin product={product} key={id} />
                   ))}
                 </div>
               )}

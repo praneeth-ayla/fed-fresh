@@ -3,27 +3,35 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 
-export default async function CategoryMenu() {
+export default async function CategoryMenu({
+  currentSlug,
+}: {
+  currentSlug?: string;
+}) {
   const categories = await prisma.category.findMany({
     where: { isActive: true },
-    orderBy: {
-      sortOrder: "asc",
-    },
+    orderBy: { sortOrder: "asc" },
   });
 
   return (
-    <main className="max-w-5xl mx-auto py-10 px-4">
-      <div className="flex gap-3 mb-8">
-        {categories.map((cat) => (
+    <main className="flex gap-4 flex-wrap justify-center">
+      {categories.map((cat) => {
+        const isSelected = cat.slug === currentSlug;
+
+        return (
           <Link
             key={cat.id}
             href={`/menu/${cat.slug}`}
-            className="px-4 py-2 rounded-md bg-green-200 hover:bg-green-300 text-sm font-medium"
+            className={`px-8 py-3 text-white rounded-lg text-2xl transition-all duration-200 ${
+              isSelected
+                ? "bg-accent hover:bg-accent/90"
+                : "bg-primary hover:bg-primary/90"
+            }`}
           >
             {cat.name}
           </Link>
-        ))}
-      </div>
+        );
+      })}
     </main>
   );
 }

@@ -5,8 +5,8 @@
 
 @layer base {
   :root {
-    --color-brand: #98C93B;
-    --color-surface: #A0C878;
+    --color-primary: #98C93B;
+    --color-secondary: #A0C878;
     --color-accent: #257C37;
     --color-bg: #424040;
     --color-text-primary: #BDE275;
@@ -14,8 +14,8 @@
 }
 
 @theme {
-  --color-brand: var(--color-brand);
-  --color-surface: var(--color-surface);
+  --color-primary: var(--color-primary);
+  --color-secondary: var(--color-secondary);
   --color-accent: var(--color-accent);
   --color-bg: var(--color-bg);
   --color-text-primary: var(--color-text-primary);

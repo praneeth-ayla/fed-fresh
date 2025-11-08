@@ -1,15 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Image as ImageType } from "@prisma/client";
 
 export default function ImagesCarousel({ images }: { images: ImageType[] }) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  // Auto-slide every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [images.length]);
+
   if (!images || images.length === 0) {
     return (
-      <div className="flex items-center justify-center h-40 bg-gray-100 rounded-md text-gray-500">
+      <div className="flex items-center justify-center h-full bg-gray-100 rounded-md text-gray-500">
         No images available
       </div>
     );
@@ -24,15 +33,15 @@ export default function ImagesCarousel({ images }: { images: ImageType[] }) {
   };
 
   return (
-    <div className="relative w-full h-64 rounded-lg overflow-hidden group">
+    <div className="relative w-full h-full rounded-lg overflow-hidden group">
       {/* Image display */}
       <Image
         src={images[currentIndex].url}
         alt={images[currentIndex].metadata || `Image ${currentIndex + 1}`}
         fill
         unoptimized
-        className="object-cover transition-transform duration-500"
-        sizes="(max-width: 768px) 100vw, 33vw"
+        className="object-cover transition-transform duration-700 ease-in-out"
+        sizes="100vw"
         priority={currentIndex === 0}
       />
 
@@ -56,13 +65,13 @@ export default function ImagesCarousel({ images }: { images: ImageType[] }) {
 
       {/* Dots indicator */}
       {images.length > 1 && (
-        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-1">
+        <div className="absolute bottom-3 left-1/2 transform -translate-x-1/2 flex gap-2">
           {images.map((_, i) => (
             <button
               key={i}
               onClick={() => setCurrentIndex(i)}
-              className={`w-2.5 h-2.5 rounded-full transition ${
-                i === currentIndex ? "bg-white" : "bg-gray-400/70"
+              className={`w-3 h-3 rounded-full transition-all ${
+                i === currentIndex ? "bg-white scale-110" : "bg-gray-400/70"
               }`}
             />
           ))}
