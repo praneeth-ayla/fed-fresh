@@ -3,17 +3,10 @@
 import DeliveryAddressSection from "@/components/DeliveryAddressSection";
 import OrderSummary from "@/components/OrderSummary";
 import { useCart } from "@/context/CartContext";
-import { Address, CustomerInfoProps, OrderSummaryProps } from "@/types/types";
+import { validatePostcode } from "@/lib/utils";
+import { Address, CustomerInfoProps } from "@/types/types";
 import { useState } from "react";
 
-// ------------------- Helpers -------------------
-const validatePostcode = (postcode: string): boolean => {
-  const validPostcodes = ["LE1", "LE2", "LE3", "LE4", "LE5"];
-  const cleaned = postcode.toUpperCase().replace(/\s/g, "");
-  return validPostcodes.some((prefix) => cleaned.startsWith(prefix));
-};
-
-// ------------------- Customer Info -------------------
 function CustomerInfo({ email, phone, setEmail, setPhone }: CustomerInfoProps) {
   return (
     <div>
@@ -43,20 +36,32 @@ function CustomerInfo({ email, phone, setEmail, setPhone }: CustomerInfoProps) {
   );
 }
 
-// ------------------- Main Component -------------------
-
 export default function CheckoutPage() {
-  const { items, totalPrice, totalDeliveries } = useCart();
+  const {
+    items,
+    totalPrice,
+    discountedTotal,
+    discountAmountPence,
+    appliedDiscountCode,
+    totalDeliveries,
+  } = useCart();
+
   const [loading, setLoading] = useState(false);
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState<Address>({
-    address_line_1: "",
+  const [email, setEmail] = useState("example@gmail.com");
+  const [phone, setPhone] = useState("12313212312");
+  const a: Address = {
+    lat: 52.63533904731663,
+    lng: -1.106021272599833,
+    city: "test",
+    state: "England",
+    country: "United Kingdom",
+    fullAddress: "196 St Saviours Rd, Leicester LE5 3SH, UK",
+    postal_code: "LE5 3SH",
+    address_line_1: "196 Saint Saviours Road",
     address_line_2: "",
-    city: "",
-    postal_code: "",
-    country: "GB",
-  });
+  };
+  const [address, setAddress] = useState<Address>(a);
+
   const [postcodeError, setPostcodeError] = useState("");
   const handlePlaceOrder = async () => {
     if (!validatePostcode(address.postal_code)) {
@@ -84,6 +89,9 @@ export default function CheckoutPage() {
           customerEmail: email,
           customerPhone: phone,
           deliveryAddress: address,
+          discountCode: appliedDiscountCode,
+          discountAmountPence,
+          totalAmountPence: discountedTotal,
         }),
       });
 
@@ -126,15 +134,21 @@ export default function CheckoutPage() {
       <OrderSummary
         items={items}
         totalPrice={totalPrice}
+        // discountAmountPence={discountAmountPence}
+        // discountedTotal={discountedTotal}
+        // discountCode={appliedDiscountCode}
         totalDeliveries={totalDeliveries}
       />
 
+      {/* Pay button */}
       <button
         onClick={handlePlaceOrder}
         disabled={loading}
         className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-md font-medium transition-colors"
       >
-        {loading ? "Processing..." : `Pay £${(totalPrice / 100).toFixed(2)}`}
+        {loading
+          ? "Processing..."
+          : `Pay £${(discountedTotal / 100).toFixed(2)}`}
       </button>
     </div>
   );

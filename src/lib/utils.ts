@@ -12,7 +12,6 @@ export const validatePostcode = (postcode: string): boolean => {
   return validPrefixes.some((p) => cleaned.startsWith(p));
 };
 
-// ✅ Validate delivery dates (unchanged)
 export async function validateDeliveryDates(dates: string[]) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -60,7 +59,6 @@ export async function validateDeliveryDates(dates: string[]) {
   }
 }
 
-// ✅ Validate addons (unchanged)
 export function validateAddons(
   product: {
     name: string;

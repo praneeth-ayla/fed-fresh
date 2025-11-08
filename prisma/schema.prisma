@@ -235,13 +235,12 @@ model DeliveryZone {
 model Discount {
   id                  Int          @id @default(autoincrement())
   code                String       @unique
+  description         String?
   type                DiscountType
-  valuePence          Int // stored in pence (e.g., £5 → 500)
+  valuePence          Int
   minOrderAmountPence Int          @default(0)
-  usageLimit          Int?
-  usedCount           Int          @default(0)
-  validFrom           DateTime?
-  validUntil          DateTime?
+  maxDiscountCapPence Int?
+  categoryIds         Int[]
   isActive            Boolean      @default(true)
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @default(now()) @updatedAt

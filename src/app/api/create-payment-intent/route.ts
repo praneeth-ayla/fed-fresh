@@ -11,7 +11,6 @@ import {
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
-// ------------------- Types -------------------
 interface CartAddonInput {
   id: number;
   name?: string;
@@ -51,37 +50,38 @@ interface OrderItemPayload {
   itemType: OrderType;
 }
 
-// ------------------- Helper Functions -------------------
-
-// ------------------- Main Handler -------------------
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { items, customerEmail, customerPhone, deliveryAddress } = body as {
+    const {
+      items,
+      customerEmail,
+      customerPhone,
+      deliveryAddress,
+      discountCode,
+    } = body as {
       items: CartItemInput[];
       customerEmail: string;
       customerPhone?: string;
       deliveryAddress: Address;
+      discountCode?: string | null;
     };
 
-    // ✅ Basic field validation
     if (
       !customerEmail ||
       !deliveryAddress?.address_line_1 ||
       !deliveryAddress?.city ||
       !deliveryAddress?.postal_code
     ) {
-      console.log({ customerEmail, deliveryAddress, body });
       return NextResponse.json(
         { error: "Missing required fields (email or address)" },
         { status: 400 }
       );
     }
 
-    // ✅ Validate allowed postcode
     if (!validatePostcode(deliveryAddress.postal_code)) {
       return NextResponse.json(
-        { error: `We only deliver in Leicester (LE1–LE5)` },
+        { error: "We only deliver in Leicester (LE1–LE5)" },
         { status: 400 }
       );
     }
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
     }
 
-    // ✅ Validate delivery dates
+    // Validate delivery dates
     const allDates = items.flatMap((i) => i.deliveryDates);
     try {
       await validateDeliveryDates(allDates);
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: message }, { status: 400 });
     }
 
-    // ✅ Fetch product & addon details
+    // Fetch products and addons
     const productIds = items.map((i) => i.id);
     const addonIds = items
       .flatMap((i) => i.addons?.map((a) => a.id) ?? [])
@@ -115,6 +115,7 @@ export async function POST(req: NextRequest) {
           basePricePence: true,
           maxFreeAddons: true,
           maxPaidAddons: true,
+          categoryId: true,
         },
       }),
       prisma.addon.findMany({
@@ -123,8 +124,8 @@ export async function POST(req: NextRequest) {
       }),
     ]);
 
-    // ✅ Calculate total
-    let totalPence = 0;
+    // Calculate subtotal
+    let subtotalPence = 0;
     const orderItemsPayload: OrderItemPayload[] = [];
 
     for (const cartItem of items) {
@@ -140,7 +141,7 @@ export async function POST(req: NextRequest) {
         cartItem.addons?.map((a) => addons.find((x) => x.id === a.id)) ?? [];
       if (selectedAddons.some((a) => !a)) {
         return NextResponse.json(
-          { error: `One or more addons not found for product ${product.name}` },
+          { error: `One or more addons not found for ${product.name}` },
           { status: 400 }
         );
       }
@@ -166,7 +167,7 @@ export async function POST(req: NextRequest) {
       const deliveries = cartItem.deliveryDates.length;
       const subtotal = unitPrice * qty * deliveries;
 
-      totalPence += subtotal;
+      subtotalPence += subtotal;
 
       orderItemsPayload.push({
         productId: product.id,
@@ -195,11 +196,59 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    if (totalPence <= 0) {
+    if (subtotalPence <= 0) {
       return NextResponse.json({ error: "Invalid total" }, { status: 400 });
     }
 
-    // ✅ Create order with structured address
+    // --------------------- 💷 Apply Discount ---------------------
+    let discountAmountPence = 0;
+    let discountId: number | null = null;
+    let totalAfterDiscount = subtotalPence;
+
+    if (discountCode) {
+      const discount = await prisma.discount.findUnique({
+        where: { code: discountCode },
+      });
+
+      if (discount && discount.isActive) {
+        const discountCategoryIds = discount.categoryIds ?? [];
+        const appliesToAll = discountCategoryIds.length === 0;
+
+        const eligibleItems = products.filter(
+          (p) => appliesToAll || discountCategoryIds.includes(p.categoryId)
+        );
+
+        const eligibleSubtotal = orderItemsPayload
+          .filter((item) => eligibleItems.some((p) => p.id === item.productId))
+          .reduce((sum, i) => sum + i.totalPricePence, 0);
+
+        if (
+          eligibleSubtotal > 0 &&
+          subtotalPence >= (discount.minOrderAmountPence ?? 0)
+        ) {
+          if (discount.type === "FIXED") {
+            discountAmountPence = discount.valuePence;
+          } else if (discount.type === "PERCENTAGE") {
+            const percent = discount.valuePence / 100;
+            discountAmountPence = Math.floor(eligibleSubtotal * percent);
+            if (
+              discount.maxDiscountCapPence &&
+              discountAmountPence > discount.maxDiscountCapPence
+            ) {
+              discountAmountPence = discount.maxDiscountCapPence;
+            }
+          }
+
+          if (discountAmountPence > subtotalPence)
+            discountAmountPence = subtotalPence;
+
+          totalAfterDiscount = subtotalPence - discountAmountPence;
+          discountId = discount.id;
+        }
+      }
+    }
+
+    // --------------------- 🧾 Create Order ---------------------
     const orderNumber = `ORD-${Date.now().toString(36)}`;
     const order = await prisma.order.create({
       data: {
@@ -217,14 +266,16 @@ export async function POST(req: NextRequest) {
           lng: deliveryAddress.lng || null,
           fullAddress: deliveryAddress.fullAddress || "",
         },
-        subtotalPence: totalPence,
-        totalAmountPence: totalPence,
+        subtotalPence,
+        discountAmountPence,
+        totalAmountPence: totalAfterDiscount,
         paymentStatus: "PENDING",
         orderStatus: "ACTIVE",
+        discountId,
       },
     });
 
-    // ✅ Create order items
+    // Create order items + deliveries
     const createdItems = await Promise.all(
       orderItemsPayload.map(async (p) => {
         const item = await prisma.orderItem.create({
@@ -260,7 +311,7 @@ export async function POST(req: NextRequest) {
       })
     );
 
-    // ✅ Stripe checkout session
+    // --------------------- 💳 Stripe Session ---------------------
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [
@@ -273,7 +324,7 @@ export async function POST(req: NextRequest) {
                 createdItems.length > 1 ? "s" : ""
               }`,
             },
-            unit_amount: totalPence,
+            unit_amount: totalAfterDiscount,
           },
           quantity: 1,
         },
@@ -285,6 +336,8 @@ export async function POST(req: NextRequest) {
       metadata: {
         orderId: order.id.toString(),
         itemCount: createdItems.length.toString(),
+        discountCode: discountCode || "",
+        discountApplied: discountAmountPence.toString(),
       },
     });
 
@@ -297,7 +350,9 @@ export async function POST(req: NextRequest) {
       order: {
         id: order.id,
         orderNumber: order.orderNumber,
-        totalAmountPence: order.totalAmountPence,
+        subtotalPence,
+        discountAmountPence,
+        totalAmountPence: totalAfterDiscount,
       },
       stripeSession: session,
     });
