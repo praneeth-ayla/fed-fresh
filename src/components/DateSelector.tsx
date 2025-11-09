@@ -1,7 +1,6 @@
-// components/DateSelector.tsx
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 type OrderType = "ONE_TIME" | "WEEKLY_PLAN" | "CUSTOM_DAYS";
 
@@ -10,7 +9,6 @@ interface DateSelectorProps {
   onDatesChange: (dates: string[]) => void;
   onClose: () => void;
   initialDates?: string[];
-  weeks?: number;
 }
 
 export default function DateSelector({
@@ -18,7 +16,6 @@ export default function DateSelector({
   onDatesChange,
   onClose,
   initialDates = [],
-  weeks = 1,
 }: DateSelectorProps) {
   const today = new Date();
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
@@ -27,7 +24,15 @@ export default function DateSelector({
 
   // Helper functions
   const formatDate = (date: Date): string => {
-    return date.toISOString().split("T")[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const parseDate = (dateString: string): Date => {
+    const [year, month, day] = dateString.split("-").map(Number);
+    return new Date(year, month - 1, day);
   };
 
   const isDateInPast = (date: Date): boolean => {
@@ -36,24 +41,25 @@ export default function DateSelector({
     return date < today;
   };
 
-  const getWeekRange = (date: Date): { start: Date; end: Date } => {
+  const getWeekStartDate = (date: Date): Date => {
     const day = date.getDay();
     const start = new Date(date);
-    start.setDate(date.getDate() - (day === 0 ? 6 : day - 1)); // Monday
-    const end = new Date(start);
-    end.setDate(start.getDate() + 4); // Friday
-    return { start, end };
+    // If it's Sunday, go back 6 days to get to Monday
+    // Otherwise, go back (day - 1) days to get to Monday
+    const daysToSubtract = day === 0 ? 6 : day - 1;
+    start.setDate(date.getDate() - daysToSubtract);
+    return start;
   };
 
-  const getWeekDays = (startDate: Date, numberOfWeeks: number): Date[] => {
+  const getWeekDays = (startDate: Date): Date[] => {
     const dates: Date[] = [];
-    for (let week = 0; week < numberOfWeeks; week++) {
-      for (let day = 0; day < 5; day++) {
-        // Monday to Friday
-        const currentDate = new Date(startDate);
-        currentDate.setDate(startDate.getDate() + week * 7 + day);
-        dates.push(currentDate);
-      }
+    const start = new Date(startDate);
+
+    for (let day = 0; day < 5; day++) {
+      // Monday to Friday only
+      const currentDate = new Date(start);
+      currentDate.setDate(start.getDate() + day);
+      dates.push(currentDate);
     }
     return dates;
   };
@@ -102,27 +108,55 @@ export default function DateSelector({
         break;
 
       case "WEEKLY_PLAN":
-        const { start } = getWeekRange(date);
+        const weekStart = getWeekStartDate(date);
+
         // Check if the week start is in the past
-        if (isDateInPast(start)) {
+        if (isDateInPast(weekStart)) {
           alert(
             "Cannot select past weeks. Please select a future week starting from Monday."
           );
           return;
         }
-        const weekDates = getWeekDays(start, weeks);
-        const weekDateStrings = weekDates.map(formatDate);
-        setSelectedDates(weekDateStrings);
-        onDatesChange(weekDateStrings);
-        break;
 
-      case "CUSTOM_DAYS":
-        const newSelectedDates = selectedDates.includes(dateString)
-          ? selectedDates.filter((d) => d !== dateString)
-          : [...selectedDates, dateString].sort();
+        // Get all days for this week
+        const weekDates = getWeekDays(weekStart);
+        const weekDateStrings = weekDates.map(formatDate);
+
+        // Check if this week is already selected
+        const isWeekAlreadySelected = weekDateStrings.every((date) =>
+          selectedDates.includes(date)
+        );
+
+        let newSelectedDates: string[];
+
+        if (isWeekAlreadySelected) {
+          // Remove this week from selection
+          newSelectedDates = selectedDates.filter(
+            (date) => !weekDateStrings.includes(date)
+          );
+        } else {
+          // Add this week to selection
+          // Remove any dates that might be in this week first (to avoid duplicates)
+          const datesWithoutThisWeek = selectedDates.filter(
+            (date) => !weekDateStrings.includes(date)
+          );
+          newSelectedDates = [
+            ...datesWithoutThisWeek,
+            ...weekDateStrings,
+          ].sort();
+        }
 
         setSelectedDates(newSelectedDates);
         onDatesChange(newSelectedDates);
+        break;
+
+      case "CUSTOM_DAYS":
+        const newCustomDates = selectedDates.includes(dateString)
+          ? selectedDates.filter((d) => d !== dateString)
+          : [...selectedDates, dateString].sort();
+
+        setSelectedDates(newCustomDates);
+        onDatesChange(newCustomDates);
         break;
     }
   };
@@ -138,17 +172,64 @@ export default function DateSelector({
     return false;
   };
 
-  // Update selected dates when weeks prop changes
-  useEffect(() => {
-    if (orderType === "WEEKLY_PLAN" && selectedDates.length > 0) {
-      const firstDate = new Date(selectedDates[0]);
-      const { start } = getWeekRange(firstDate);
-      const weekDates = getWeekDays(start, weeks);
+  // Get all selected weeks for display
+  const getSelectedWeeks = (): string[] => {
+    if (orderType !== "WEEKLY_PLAN") return [];
+
+    const weekStarts = new Set<string>();
+
+    selectedDates.forEach((dateStr) => {
+      const date = parseDate(dateStr);
+      const weekStart = getWeekStartDate(date);
+      weekStarts.add(formatDate(weekStart));
+    });
+
+    return Array.from(weekStarts).sort();
+  };
+
+  const getNextMonday = (): Date => {
+    const today = new Date();
+    const day = today.getDay();
+    const daysUntilMonday = day === 0 ? 1 : day === 1 ? 0 : 8 - day;
+    const nextMonday = new Date(today);
+    nextMonday.setDate(today.getDate() + daysUntilMonday);
+    return nextMonday;
+  };
+
+  const handleQuickSelectNextWeek = () => {
+    if (orderType === "WEEKLY_PLAN") {
+      const nextMonday = getNextMonday();
+      const weekDates = getWeekDays(nextMonday);
       const weekDateStrings = weekDates.map(formatDate);
-      setSelectedDates(weekDateStrings);
-      onDatesChange(weekDateStrings);
+
+      // Check if this week is already selected
+      const isWeekAlreadySelected = weekDateStrings.every((date) =>
+        selectedDates.includes(date)
+      );
+
+      let newSelectedDates: string[];
+
+      if (isWeekAlreadySelected) {
+        // Remove this week from selection
+        newSelectedDates = selectedDates.filter(
+          (date) => !weekDateStrings.includes(date)
+        );
+      } else {
+        // Add this week to selection
+        const datesWithoutThisWeek = selectedDates.filter(
+          (date) => !weekDateStrings.includes(date)
+        );
+        newSelectedDates = [...datesWithoutThisWeek, ...weekDateStrings].sort();
+      }
+
+      setSelectedDates(newSelectedDates);
+      onDatesChange(newSelectedDates);
+
+      // Navigate to the month of the selected week
+      setCurrentMonth(nextMonday.getMonth());
+      setCurrentYear(nextMonday.getFullYear());
     }
-  }, [weeks, orderType]);
+  };
 
   // Render calendar
   const daysInMonth = getDaysInMonth(currentYear, currentMonth);
@@ -164,7 +245,6 @@ export default function DateSelector({
   // Days of the month
   for (let day = 1; day <= daysInMonth; day++) {
     const date = new Date(currentYear, currentMonth, day);
-    const isPast = isDateInPast(date);
     const isSelected = isDateSelected(date);
     const isDisabled = isDateDisabled(date);
     const isWeekend = !isWeekday(date);
@@ -190,28 +270,7 @@ export default function DateSelector({
     );
   }
 
-  const getNextMonday = (): Date => {
-    const today = new Date();
-    const day = today.getDay();
-    const daysUntilMonday = day === 0 ? 1 : 8 - day;
-    const nextMonday = new Date(today);
-    nextMonday.setDate(today.getDate() + daysUntilMonday);
-    return nextMonday;
-  };
-
-  const handleQuickSelectNextWeek = () => {
-    if (orderType === "WEEKLY_PLAN") {
-      const nextMonday = getNextMonday();
-      const weekDates = getWeekDays(nextMonday, weeks);
-      const weekDateStrings = weekDates.map(formatDate);
-      setSelectedDates(weekDateStrings);
-      onDatesChange(weekDateStrings);
-
-      // Navigate to the month of the selected week
-      setCurrentMonth(nextMonday.getMonth());
-      setCurrentYear(nextMonday.getFullYear());
-    }
-  };
+  const selectedWeeks = getSelectedWeeks();
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -255,41 +314,68 @@ export default function DateSelector({
           <div className="mt-4">
             <button
               onClick={handleQuickSelectNextWeek}
-              className="w-full bg-blue-100 text-blue-700 py-2 rounded hover:bg-blue-200"
+              className="w-full bg-blue-100 text-blue-700 py-2 rounded hover:bg-blue-200 text-sm"
             >
-              Select Next Available Week (Starts{" "}
-              {getNextMonday().toLocaleDateString()})
+              {selectedWeeks.some(
+                (week) => week === formatDate(getNextMonday())
+              )
+                ? "Remove Next Week"
+                : "Add Next Week"}
             </button>
           </div>
         )}
 
+        {/* Selection Info */}
         <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-          <h4 className="font-medium mb-2">Selection Info:</h4>
+          <h4 className="font-medium mb-2">
+            {orderType === "ONE_TIME" && "Single Delivery"}
+            {orderType === "WEEKLY_PLAN" && "Weekly Plan"}
+            {orderType === "CUSTOM_DAYS" && "Custom Dates"}
+          </h4>
+
           {orderType === "ONE_TIME" && selectedDates.length > 0 && (
-            <p>Selected date: {selectedDates[0]}</p>
+            <p className="text-sm text-gray-600">Date: {selectedDates[0]}</p>
           )}
-          {orderType === "WEEKLY_PLAN" && selectedDates.length > 0 && (
+
+          {orderType === "WEEKLY_PLAN" && (
             <div>
-              <p>Week starting: {selectedDates[0]}</p>
               <p className="text-sm text-gray-600">
-                {weeks} week{weeks > 1 ? "s" : ""} = {selectedDates.length}{" "}
-                deliveries
+                {selectedWeeks.length} week
+                {selectedWeeks.length !== 1 ? "s" : ""} selected
               </p>
+              <p className="text-sm text-gray-600">
+                {selectedDates.length} total deliveries
+              </p>
+              {selectedWeeks.length > 0 && (
+                <div className="mt-2 max-h-24 overflow-y-auto">
+                  {selectedWeeks.map((weekStart) => (
+                    <div key={weekStart} className="text-xs text-gray-500 mb-1">
+                      Week of {weekStart}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
+
           {orderType === "CUSTOM_DAYS" && (
             <div>
-              <p>Selected dates: {selectedDates.length}</p>
+              <p className="text-sm text-gray-600">
+                {selectedDates.length} delivery
+                {selectedDates.length > 1 ? "s" : ""} selected
+              </p>
               {selectedDates.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2 max-h-20 overflow-y-auto">
-                  {selectedDates.map((date) => (
-                    <span
-                      key={date}
-                      className="px-2 py-1 bg-blue-100 rounded text-xs"
-                    >
+                <div className="mt-2 max-h-24 overflow-y-auto">
+                  {selectedDates.slice(0, 5).map((date) => (
+                    <div key={date} className="text-xs text-gray-500">
                       {date}
-                    </span>
+                    </div>
                   ))}
+                  {selectedDates.length > 5 && (
+                    <div className="text-xs text-gray-500">
+                      ... and {selectedDates.length - 5} more
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -298,17 +384,29 @@ export default function DateSelector({
 
         <div className="mt-6 flex justify-between items-center">
           <button
-            onClick={onClose}
+            onClick={() => {
+              setSelectedDates([]);
+              onDatesChange([]);
+              onClose();
+            }}
             className="px-4 py-2 text-gray-600 hover:text-gray-800"
           >
-            Close
+            Clear All
           </button>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Confirm Selection
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Confirm
+            </button>
+          </div>
         </div>
       </div>
     </div>

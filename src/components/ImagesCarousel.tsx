@@ -18,7 +18,7 @@ export default function ImagesCarousel({ images }: { images: ImageType[] }) {
 
   if (!images || images.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-100 rounded-md text-gray-500">
+      <div className="flex items-center justify-center h-full bg-gray-100 text-gray-500">
         No images available
       </div>
     );
@@ -33,7 +33,7 @@ export default function ImagesCarousel({ images }: { images: ImageType[] }) {
   };
 
   return (
-    <div className="relative w-full h-full rounded-lg overflow-hidden group">
+    <div className="relative w-full h-full overflow-hidden group">
       {/* Image display */}
       <Image
         src={images[currentIndex].url}
@@ -52,13 +52,13 @@ export default function ImagesCarousel({ images }: { images: ImageType[] }) {
             onClick={prevImage}
             className="absolute top-1/2 left-3 transform -translate-y-1/2 bg-black/50 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition"
           >
-            ◀
+            {"<"}
           </button>
           <button
             onClick={nextImage}
             className="absolute top-1/2 right-3 transform -translate-y-1/2 bg-black/50 text-white rounded-full p-2 opacity-0 group-hover:opacity-100 transition"
           >
-            ▶
+            {">"}
           </button>
         </>
       )}

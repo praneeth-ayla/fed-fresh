@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import ProductClient from "./ProductClient";
+import ImagesCarousel from "@/components/ImagesCarousel";
+import ProductOrderCard from "@/components/ProductOrderCard";
 
 /**
  * @description Product page for a single product under a category.
@@ -37,8 +38,13 @@ export default async function page({
   }
 
   return (
-    <div className="max-w-5xl mx-auto py-10">
-      <ProductClient product={product} />
-    </div>
+    <main>
+      <div className="flex py-8 gap-6">
+        <div className="h-[400px] aspect-square">
+          <ImagesCarousel images={product.images} />
+        </div>
+        <ProductOrderCard product={product} />
+      </div>
+    </main>
   );
 }

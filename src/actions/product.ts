@@ -21,9 +21,8 @@ type AddonInput = {
 };
 
 /**
- * 🔹 HELPER: Parse Addons JSON from FormData
+ * HELPER: Parse Addons JSON from FormData
  * Safely parses JSON string of addons and returns array of AddonInput
- * Placeholder: default type determination is basic and may need refinement
  */
 function parseAddons(formData: FormData): AddonInput[] {
   const raw = formData.get("addons") as string | null;
@@ -45,7 +44,7 @@ function parseAddons(formData: FormData): AddonInput[] {
 }
 
 /**
- * 🔹 HELPER: Parse Images JSON from FormData
+ * HELPER: Parse Images JSON from FormData
  * Safely parses JSON string of image URLs and returns array of objects for DB insertion
  */
 function parseImages(formData: FormData): { url: string }[] {
@@ -66,7 +65,7 @@ function parseImages(formData: FormData): { url: string }[] {
 }
 
 /**
- * 🔹 CREATE PRODUCT
+ * CREATE PRODUCT
  * Inserts a new product along with optional addons and images
  */
 export async function addProduct(formData: FormData) {
@@ -126,11 +125,18 @@ export async function addProduct(formData: FormData) {
     }
   });
 
+  const category = await prisma.category.findUnique({
+    where: { id: categoryId },
+    select: { slug: true },
+  });
+
+  // Revalidate admin and public pages
   revalidatePath("/dashboard/menu");
+  if (category?.slug) revalidatePath(`/menu/${category.slug}`);
 }
 
 /**
- * 🔹 UPDATE PRODUCT
+ * UPDATE PRODUCT
  * Updates an existing product and replaces its addons and images
  */
 export async function updateProduct(formData: FormData) {
@@ -197,16 +203,35 @@ export async function updateProduct(formData: FormData) {
     return prod;
   });
 
+  const category = await prisma.category.findUnique({
+    where: { id: categoryId },
+    select: { slug: true },
+  });
+
   revalidatePath("/dashboard/menu");
+  if (category?.slug) revalidatePath(`/menu/${category.slug}`);
   return updated;
 }
 
 /**
- * 🔹 DELETE PRODUCT
+ * DELETE PRODUCT
  * Deletes a product and its associated addons and images
  */
+
 export async function deleteProduct(id: number) {
   if (!id) throw new Error("Invalid product ID");
+
+  const product = await prisma.product.findUnique({
+    where: { id },
+    select: { categoryId: true },
+  });
+
+  const category = product
+    ? await prisma.category.findUnique({
+        where: { id: product.categoryId },
+        select: { slug: true },
+      })
+    : null;
 
   await prisma.$transaction([
     prisma.addon.deleteMany({ where: { productId: id } }),
@@ -215,10 +240,11 @@ export async function deleteProduct(id: number) {
   ]);
 
   revalidatePath("/dashboard/menu");
+  if (category?.slug) revalidatePath(`/menu/${category.slug}`);
 }
 
 /**
- * 🔹 TOGGLE PRODUCT ACTIVE STATUS
+ * TOGGLE PRODUCT ACTIVE STATUS
  */
 export async function toggleProductActive(id: number, active: boolean) {
   if (!id) throw new Error("Invalid product ID");
@@ -233,7 +259,7 @@ export async function toggleProductActive(id: number, active: boolean) {
 }
 
 /**
- * 🔹 DUPLICATE PRODUCT
+ * DUPLICATE PRODUCT
  * Creates a copy of an existing product including its images and addons
  * Copied product is set inactive by default
  */
@@ -284,6 +310,14 @@ export async function duplicateProduct(id: number) {
     return created;
   });
 
+  const category = product
+    ? await prisma.category.findUnique({
+        where: { id: product.categoryId },
+        select: { slug: true },
+      })
+    : null;
+
   revalidatePath("/dashboard/menu");
+  if (category?.slug) revalidatePath(`/menu/${category.slug}`);
   return newProduct;
 }
