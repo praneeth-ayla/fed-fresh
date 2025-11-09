@@ -42,17 +42,41 @@ export default function AddEditCategoryDialog({
   const [description, setDescription] = useState(existing?.description || "");
   const router = useRouter();
 
-  async function handleSubmit(formData: FormData) {
-    startTransition(async () => {
-      if (mode === "add") {
-        await addCategory(formData);
-        router.refresh();
-      } else {
-        const updated = await updateCategory(formData);
-        router.push(`/dashboard/menu/${updated.slug}`);
-      }
+  async function handleSubmit(
+    e?: React.FormEvent<HTMLFormElement> | React.MouseEvent<HTMLButtonElement>
+  ) {
+    console.log("wowo");
+    e?.preventDefault();
 
-      setIsOpen(false);
+    const formData = new FormData();
+    formData.append("name", name);
+    formData.append("sortOrder", sortOrder);
+    formData.append("description", description);
+    if (existing?.id) formData.append("id", existing.id.toString());
+
+    console.log("Mode:", mode);
+    console.log("Existing ID:", existing?.id);
+    console.log("FormData entries:", Object.fromEntries(formData));
+
+    startTransition(async () => {
+      try {
+        if (mode === "add") {
+          await addCategory(formData);
+          router.refresh();
+        } else {
+          console.log("Calling updateCategory...");
+          const updated = await updateCategory(formData);
+          console.log("Updated category:", updated);
+          router.push("/dashboard/menu/" + updated.slug);
+        }
+        setIsOpen(false);
+      } catch (error) {
+        console.error("Error:", error);
+        const errorMessage =
+          error instanceof Error ? error.message : "An error occurred";
+
+        alert(`Error: ${errorMessage}`);
+      }
     });
   }
 
@@ -71,14 +95,14 @@ export default function AddEditCategoryDialog({
       <DialogTrigger asChild>
         <Button
           variant={mode === "add" ? "outline" : "secondary"}
-          className={mode === "add" ? "bg-gray-200" : "bg-none border-0"}
+          className={`border-0 font-bold hover:bg-gray-300  bg-[#CBCBCB]`}
         >
           {triggerLabel || (mode === "add" ? "Add" : "Edit")}
         </Button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-[425px]">
-        <form action={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <DialogHeader>
             <DialogTitle>
               {mode === "add" ? "Add Category" : "Edit Category"}
@@ -131,21 +155,31 @@ export default function AddEditCategoryDialog({
 
           <DialogFooter className="pt-4 flex justify-between">
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button
+                type="button"
+                className="bg-[#CBCBCB] hover:bg-[#CBCBCB]/50 border-0"
+              >
+                Cancel
+              </Button>
             </DialogClose>
 
             <div className="flex gap-2">
               {mode === "edit" && (
                 <Button
                   type="button"
-                  variant="destructive"
+                  className="bg-red-400 hover:bg-red-300"
                   onClick={handleDelete}
                   disabled={isPending}
                 >
                   {isPending ? "Deleting..." : "Delete"}
                 </Button>
               )}
-              <Button type="submit" disabled={isPending}>
+              <Button
+                type="button"
+                onClick={handleSubmit}
+                className="bg-[#CBCBCB] hover:bg-[#CBCBCB]/50"
+                disabled={isPending}
+              >
                 {isPending
                   ? mode === "add"
                     ? "Adding..."

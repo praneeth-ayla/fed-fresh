@@ -9,15 +9,13 @@ export default async function layout({
   children: React.ReactNode;
 }) {
   const session = await getServerSession(authOptions);
-
   if (!session?.user?.isAdmin) {
     redirect("/");
   }
-
   return (
-    <>
+    <main className="flex flex-col h-screen">
       <NavbarAdmin />
-      <div className="flex flex-1">{children}</div>
-    </>
+      <div className="flex-1 overflow-auto">{children}</div>
+    </main>
   );
 }

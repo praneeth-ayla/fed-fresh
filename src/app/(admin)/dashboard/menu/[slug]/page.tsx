@@ -3,6 +3,7 @@ import CategoriesSidebar from "@/components/CategoriesSidebar";
 import { notFound } from "next/navigation";
 import ProductCardAdmin from "@/components/ProductCardAdmin";
 import AddEditProductDialog from "@/components/AddEditProductDialog";
+import { Button } from "@/components/ui/button";
 
 async function getCategories() {
   return prisma.category.findMany({
@@ -42,25 +43,33 @@ export default async function page({
   if (!category) return notFound();
 
   return (
-    <div className="flex h-full w-screen">
-      <CategoriesSidebar categories={categories} selectedSlug={slug} isAdmin />
+    <div className="flex flex-1 h-full w-full">
+      <CategoriesSidebar categories={categories} selectedSlug={slug} />
 
-      <main className="flex-1 w-full">
+      <main className="flex-1 min-h-0 overflow-auto w-full">
         <div className="container mx-auto px-4 py-8">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold">{category.name} Category</h1>
             <AddEditProductDialog categoryId={category.id}>
-              Add New Product
+              <Button className="bg-[#CBCBCB] font-bold text-base px-8 py-5">
+                Add New Product
+              </Button>
             </AddEditProductDialog>
           </div>
+
           {category.products && (
             <>
               {category.products.length === 0 ? (
                 <p>No products in this category yet.</p>
               ) : (
-                <div className="bg-white divide-y divide-gray-200">
+                <div className="flex flex-col gap-10 mb-10">
                   {category.products.map((product, id) => (
-                    <ProductCardAdmin product={product} key={id} />
+                    <div
+                      key={id}
+                      className="border-b-2 border-[#9A9A9A] pb-10 last:border-b-2"
+                    >
+                      <ProductCardAdmin product={product} />
+                    </div>
                   ))}
                 </div>
               )}
