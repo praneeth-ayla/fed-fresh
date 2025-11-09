@@ -21,13 +21,17 @@ export default function NavbarAdmin() {
             Menu management
           </Link>
           <Link
-            className={`${isSelectedPath(path, "/") ? "font-semibold" : ""}`}
+            className={`${
+              isSelectedPath(path, "/orders") ? "font-semibold" : ""
+            }`}
             href="/dashboard/orders"
           >
             Order management
           </Link>
           <Link
-            className={`${isSelectedPath(path, "/") ? "font-semibold" : ""}`}
+            className={`${
+              isSelectedPath(path, "/pricing") ? "font-semibold" : ""
+            }`}
             href="/dashboard/pricing"
           >
             Pricing

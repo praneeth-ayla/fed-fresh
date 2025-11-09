@@ -35,15 +35,17 @@ export default function ImagesCarousel({ images }: { images: ImageType[] }) {
   return (
     <div className="relative w-full h-full overflow-hidden group">
       {/* Image display */}
-      <Image
-        src={images[currentIndex].url}
-        alt={images[currentIndex].metadata || `Image ${currentIndex + 1}`}
-        fill
-        unoptimized
-        className="object-cover transition-transform duration-700 ease-in-out"
-        sizes="100vw"
-        priority={currentIndex === 0}
-      />
+      {images[currentIndex]?.url && (
+        <Image
+          src={images[currentIndex].url}
+          alt={images[currentIndex].metadata || `Image ${currentIndex + 1}`}
+          fill
+          unoptimized
+          className="object-cover transition-transform duration-700 ease-in-out"
+          sizes="100vw"
+          priority={currentIndex === 0}
+        />
+      )}
 
       {/* Left/Right navigation */}
       {images.length > 1 && (

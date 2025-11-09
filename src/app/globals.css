@@ -10,6 +10,7 @@
     --color-accent: #257C37;
     --color-bg: #424040;
     --color-text-primary: #BDE275;
+    --color-admin-btn: #CBCBCB;
   }
 }
 
@@ -19,4 +20,5 @@
   --color-accent: var(--color-accent);
   --color-bg: var(--color-bg);
   --color-text-primary: var(--color-text-primary);
+  --color-admin-btn: var(--color-admin-btn)
 }

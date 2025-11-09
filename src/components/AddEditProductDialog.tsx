@@ -37,6 +37,7 @@ export default function AddEditProductDialog({
   const [isPending, startTransition] = useTransition();
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
+  const [isUploading, setIsUploading] = useState(false);
 
   // Local form states
   const [name, setName] = useState(existing?.name || "");
@@ -184,20 +185,22 @@ export default function AddEditProductDialog({
             <div className="flex items-center gap-2">
               <UploadButton
                 endpoint="imageUploader"
+                onUploadBegin={() => setIsUploading(true)}
                 onClientUploadComplete={(res) => {
                   if (!res) return;
                   const urls = res.map((file) => file.url);
                   setImages((prev) => [...prev, ...urls]);
+                  setIsUploading(false);
                 }}
                 onUploadError={(error: Error) => {
                   alert(`Upload failed: ${error.message}`);
                 }}
-                className="upload-btn-wrapper"
                 appearance={{
                   button:
-                    "bg-white text-black border border-gray-300 px-3 py-1 rounded text-sm hover:bg-gray-100 transition",
-                  container: "w-auto",
-                  allowedContent: "hidden", // hides default "Allowed files" text
+                    "bg-blue-600 text-white font-semibold px-5 py-2 rounded-md shadow-md hover:bg-blue-700 active:scale-95 transition-all duration-200",
+                  container:
+                    "w-auto flex items-center justify-center cursor-pointer",
+                  allowedContent: "text-xs text-gray-500 mt-1",
                 }}
               />
 
@@ -322,13 +325,12 @@ export default function AddEditProductDialog({
                   <span>
                     {addon.name} (£{addon.pricePence / 100})
                   </span>
-                  <button
-                    type="button"
+                  <div
                     onClick={() => handleRemoveAddon(idx)}
-                    className="text-red-500 hover:text-red-700"
+                    className="text-red-500 hover:text-red-700 bg-transparent hover:bg-transparent"
                   >
                     <X className="w-4 h-4" />
-                  </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -342,7 +344,7 @@ export default function AddEditProductDialog({
                 </Button>
               </DialogClose>
 
-              <Button type="submit" disabled={isPending}>
+              <Button type="submit" disabled={isPending || isUploading}>
                 {isPending
                   ? mode === "add"
                     ? "Adding..."

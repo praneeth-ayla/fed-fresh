@@ -1,6 +1,8 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
+import { Addon } from "@prisma/client";
+import { revalidateTag } from "next/cache";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -117,9 +119,10 @@ export async function addProduct(formData: FormData) {
 
     if (images.length > 0) {
       await tx.image.createMany({
-        data: images.map((img) => ({
+        data: images.map((img, i) => ({
           url: img.url,
           productId: created.id,
+          metadata: `Fed fresh ${name} ${i}`,
         })),
       });
     }
@@ -155,52 +158,133 @@ export async function updateProduct(formData: FormData) {
 
   const slug = name.toLowerCase().replace(/\s+/g, "-");
 
-  const addons = parseAddons(formData);
-  const images = parseImages(formData);
+  const newAddons = parseAddons(formData);
+  const newImages = parseImages(formData);
 
   const updated = await prisma.$transaction(async (tx) => {
-    const prod = await tx.product.update({
+    // Get current data for comparison
+    const existingProduct = await tx.product.findUnique({
+      where: { id },
+      include: { addons: true, images: true },
+    });
+    if (!existingProduct) throw new Error("Product not found");
+
+    // Update only changed product fields
+    await tx.product.update({
       where: { id },
       data: {
-        name,
-        description,
-        categoryId,
-        basePricePence,
-        tags,
-        maxFreeAddons,
-        maxPaidAddons,
-        availabilityOneTime,
-        availabilityWeekly,
-        slug,
+        name: existingProduct.name !== name ? name : undefined,
+        description:
+          existingProduct.description !== description ? description : undefined,
+        categoryId:
+          existingProduct.categoryId !== categoryId ? categoryId : undefined,
+        basePricePence:
+          existingProduct.basePricePence !== basePricePence
+            ? basePricePence
+            : undefined,
+        tags: existingProduct.tags !== tags ? tags : undefined,
+        maxFreeAddons:
+          existingProduct.maxFreeAddons !== maxFreeAddons
+            ? maxFreeAddons
+            : undefined,
+        maxPaidAddons:
+          existingProduct.maxPaidAddons !== maxPaidAddons
+            ? maxPaidAddons
+            : undefined,
+        availabilityOneTime:
+          existingProduct.availabilityOneTime !== availabilityOneTime
+            ? availabilityOneTime
+            : undefined,
+        availabilityWeekly:
+          existingProduct.availabilityWeekly !== availabilityWeekly
+            ? availabilityWeekly
+            : undefined,
+        slug: existingProduct.slug !== slug ? slug : undefined,
       },
     });
 
-    // Replace existing addons
-    await tx.addon.deleteMany({ where: { productId: id } });
-    if (addons.length > 0) {
-      await tx.addon.createMany({
-        data: addons.map((a) => ({
-          name: a.name,
-          description: a.description ?? null,
-          pricePence: a.pricePence ?? 0,
-          type: a.type ?? "FREE",
-          productId: id,
-        })),
+    const existingAddons = existingProduct.addons;
+
+    // Find addons to delete (no longer in new list)
+    const toDelete = existingAddons.filter(
+      (old) =>
+        !newAddons.some(
+          (na) => na.name.toLowerCase() === old.name.toLowerCase()
+        )
+    );
+
+    for (const addon of toDelete) {
+      const used = await tx.orderItemAddon.findFirst({
+        where: { addonId: addon.id },
+        select: { id: true },
       });
+
+      if (used) {
+        // Mark inactive if it's used
+        await tx.addon.update({
+          where: { id: addon.id },
+          data: { isActive: false },
+        });
+      } else {
+        // Safe to delete
+        await tx.addon.delete({ where: { id: addon.id } });
+      }
     }
 
-    // Replace existing images
+    // Add or update addons that remain or are new
+    for (const newAddon of newAddons) {
+      const existing = existingAddons.find(
+        (a) => a.name.toLowerCase() === newAddon.name.toLowerCase()
+      );
+
+      if (existing) {
+        // Use Partial to avoid having to define all fields
+        const updateData: Partial<Addon> = {};
+
+        if (existing.description !== newAddon.description)
+          updateData.description = newAddon.description ?? null; // never undefined
+
+        if (existing.pricePence !== newAddon.pricePence)
+          updateData.pricePence = newAddon.pricePence ?? 0; // always number
+
+        if (existing.type !== newAddon.type)
+          updateData.type = newAddon.type ?? "FREE"; // always valid enum
+
+        if (existing.isActive === false) updateData.isActive = true;
+
+        if (Object.keys(updateData).length > 0) {
+          await tx.addon.update({
+            where: { id: existing.id },
+            data: updateData as Addon,
+          });
+        }
+      } else {
+        await tx.addon.create({
+          data: {
+            name: newAddon.name,
+            description: newAddon.description ?? null,
+            pricePence: newAddon.pricePence ?? 0,
+            type: newAddon.type ?? "FREE",
+            isActive: true,
+            productId: id,
+          },
+        });
+      }
+    }
+
+    // Handle images (replace all for simplicity)
     await tx.image.deleteMany({ where: { productId: id } });
-    if (images.length > 0) {
+    if (newImages.length > 0) {
       await tx.image.createMany({
-        data: images.map((img) => ({
+        data: newImages.map((img, i) => ({
           url: img.url,
           productId: id,
+          metadata: `Fed fresh ${name} ${i}`,
         })),
       });
     }
 
-    return prod;
+    return existingProduct;
   });
 
   const category = await prisma.category.findUnique({
@@ -254,7 +338,9 @@ export async function toggleProductActive(id: number, active: boolean) {
     data: { isActive: active },
   });
 
+  revalidateTag("categories");
   revalidatePath("/dashboard/menu");
+  if (updated?.slug) revalidatePath(`/menu/${updated.slug}`);
   return updated;
 }
 

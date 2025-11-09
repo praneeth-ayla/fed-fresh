@@ -22,7 +22,7 @@ async function getProductsByCategory(slug: string) {
           category: true,
           addons: true,
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: { name: "desc" },
       },
     },
   });
@@ -51,7 +51,7 @@ export default async function page({
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold">{category.name} Category</h1>
             <AddEditProductDialog categoryId={category.id}>
-              <Button className="bg-[#CBCBCB] font-bold text-base px-8 py-5">
+              <Button className="bg-admin-btn hover:bg-admin-btn/50 hover:cursor-pointer font-bold text-base px-8 py-5">
                 Add New Product
               </Button>
             </AddEditProductDialog>

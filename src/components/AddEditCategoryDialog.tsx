@@ -21,6 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Category } from "@prisma/client";
+import ConfirmDialog from "./ConfirmDialog";
 
 type AddEditCategoryDialogProps = {
   mode?: "add" | "edit";
@@ -81,7 +82,7 @@ export default function AddEditCategoryDialog({
   }
 
   async function handleDelete() {
-    if (existing && confirm(`Delete "${existing.name}"?`)) {
+    if (existing) {
       startTransition(async () => {
         await deleteCategory(existing.id);
         router.push(`/dashboard/menu`); // go back to menu
@@ -95,7 +96,7 @@ export default function AddEditCategoryDialog({
       <DialogTrigger asChild>
         <Button
           variant={mode === "add" ? "outline" : "secondary"}
-          className={`border-0 font-bold hover:bg-gray-300  bg-[#CBCBCB]`}
+          className={`border-0 font-bold hover:bg-gray-300  bg-admin-btn`}
         >
           {triggerLabel || (mode === "add" ? "Add" : "Edit")}
         </Button>
@@ -157,7 +158,7 @@ export default function AddEditCategoryDialog({
             <DialogClose asChild>
               <Button
                 type="button"
-                className="bg-[#CBCBCB] hover:bg-[#CBCBCB]/50 border-0"
+                className="bg-admin-btn hover:bg-admin-btn/50 border-0"
               >
                 Cancel
               </Button>
@@ -165,19 +166,21 @@ export default function AddEditCategoryDialog({
 
             <div className="flex gap-2">
               {mode === "edit" && (
-                <Button
-                  type="button"
-                  className="bg-red-400 hover:bg-red-300"
-                  onClick={handleDelete}
-                  disabled={isPending}
+                <ConfirmDialog
+                  title="Delete Category?"
+                  description="Are you sure you want to delete this Category? It will delete all the products belongs to it!"
+                  confirmText="Delete"
+                  onConfirm={handleDelete}
                 >
-                  {isPending ? "Deleting..." : "Delete"}
-                </Button>
+                  <Button className="bg-admin-btn hover:bg-admin-btn/50 hover:cursor-pointer px-5 py-2.5 rounded-lg">
+                    Delete
+                  </Button>
+                </ConfirmDialog>
               )}
               <Button
                 type="button"
                 onClick={handleSubmit}
-                className="bg-[#CBCBCB] hover:bg-[#CBCBCB]/50"
+                className="bg-admin-btn hover:bg-admin-btn/50"
                 disabled={isPending}
               >
                 {isPending
