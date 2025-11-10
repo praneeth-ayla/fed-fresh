@@ -70,14 +70,14 @@ export function validateAddons(
   const freeCount = selectedAddons.filter((a) => a.type === "FREE").length;
   const paidCount = selectedAddons.filter((a) => a.type === "PAID").length;
 
-  if (freeCount > product.maxFreeAddons) {
+  if (product.maxFreeAddons != 0 && freeCount > product.maxFreeAddons) {
     return {
       valid: false,
       error: `"${product.name}" allows max ${product.maxFreeAddons} free addon(s), but ${freeCount} selected`,
     };
   }
 
-  if (paidCount > product.maxPaidAddons) {
+  if (product.maxPaidAddons != 0 && paidCount > product.maxPaidAddons) {
     return {
       valid: false,
       error: `"${product.name}" allows max ${product.maxPaidAddons} paid addon(s), but ${paidCount} selected`,
