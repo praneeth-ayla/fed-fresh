@@ -206,8 +206,13 @@ export async function POST(req: NextRequest) {
     let totalAfterDiscount = subtotalPence;
 
     if (discountCode) {
-      const discount = await prisma.discount.findUnique({
-        where: { code: discountCode },
+      const discount = await prisma.discount.findFirst({
+        where: {
+          code: {
+            equals: discountCode,
+            mode: "insensitive",
+          },
+        },
       });
 
       if (discount && discount.isActive) {

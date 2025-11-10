@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Discount, Category } from "@prisma/client";
+import ConfirmDialog from "./ConfirmDialog";
 
 type Props = {
   mode?: "add" | "edit";
@@ -39,8 +40,6 @@ export default function AddEditDiscountDialog({
   const [type, setType] = useState<"FIXED" | "PERCENTAGE">(
     existing?.type || "FIXED"
   );
-
-  // Values directly in pence or integer percent — no conversions
   const [value, setValue] = useState(
     existing ? String(existing.valuePence) : ""
   );
@@ -61,16 +60,17 @@ export default function AddEditDiscountDialog({
     );
   }
 
-  async function handleSubmit(formData: FormData) {
-    // include selected categories
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+
+    console.log({ selectedCategories });
+    if (selectedCategories.length == 0) {
+      return;
+    }
+    const formData = new FormData(e.currentTarget);
     selectedCategories.forEach((id) =>
       formData.append("categories", String(id))
     );
-
-    if (selectedCategories.length === 0) {
-      alert("Please select at least one category before saving.");
-      return;
-    }
 
     startTransition(async () => {
       if (mode === "add") {
@@ -84,7 +84,7 @@ export default function AddEditDiscountDialog({
   }
 
   async function handleDelete() {
-    if (existing && confirm(`Delete discount "${existing.code}"?`)) {
+    if (existing) {
       startTransition(async () => {
         await deleteDiscount(existing.id);
         router.refresh();
@@ -93,16 +93,19 @@ export default function AddEditDiscountDialog({
     }
   }
 
+  const isSaveDisabled =
+    isPending || selectedCategories.length === 0 || !code.trim() || !value;
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant={mode === "add" ? "outline" : "secondary"}>
+        <Button>
           {triggerLabel || (mode === "add" ? "Add Discount" : "Edit")}
         </Button>
       </DialogTrigger>
 
       <DialogContent className="sm:max-w-[560px]">
-        <form action={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <DialogHeader>
             <DialogTitle>
               {mode === "add" ? "Add Discount" : "Edit Discount"}
@@ -228,25 +231,32 @@ export default function AddEditDiscountDialog({
                 </label>
               ))}
             </div>
+            {selectedCategories.length === 0 && (
+              <p className="text-sm text-red-500">
+                Please select at least one category
+              </p>
+            )}
           </div>
 
           <DialogFooter className="pt-4 flex justify-between">
             <DialogClose asChild>
-              <Button variant="outline">Cancel</Button>
+              <Button type="button">Cancel</Button>
             </DialogClose>
 
             <div className="flex gap-2">
               {mode === "edit" && (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={handleDelete}
-                  disabled={isPending}
+                <ConfirmDialog
+                  title="Delete Discount?"
+                  description="Are you sure you want to delete this Discount code?"
+                  confirmText="Delete"
+                  onConfirm={handleDelete}
                 >
-                  {isPending ? "Deleting..." : "Delete"}
-                </Button>
+                  <Button type="button" disabled={isPending}>
+                    {isPending ? "Deleting..." : "Delete"}
+                  </Button>
+                </ConfirmDialog>
               )}
-              <Button type="submit" disabled={isPending}>
+              <Button type="submit" disabled={isSaveDisabled}>
                 {isPending
                   ? mode === "add"
                     ? "Adding..."

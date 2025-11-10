@@ -27,7 +27,14 @@ export async function POST(req: NextRequest) {
     }
 
     const [discount, allCategories] = await Promise.all([
-      prisma.discount.findUnique({ where: { code } }),
+      prisma.discount.findFirst({
+        where: {
+          code: {
+            equals: code,
+            mode: "insensitive",
+          },
+        },
+      }),
       prisma.category.findMany({ select: { id: true } }),
     ]);
 
